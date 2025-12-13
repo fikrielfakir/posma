@@ -20,6 +20,7 @@ import {
   Scan,
   Wallet,
   FileText,
+  TrendingUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,7 @@ const salesNavItems = [
   { title: "pos", url: "/pos", icon: Scan },
   { title: "cashSessions", url: "/cash-sessions", icon: Wallet },
   { title: "invoices", url: "/invoices", icon: FileText },
+  { title: "financial", url: "/financial", icon: TrendingUp },
   { title: "customers", url: "/customers", icon: Users },
   { title: "sales", url: "/sales", icon: Receipt },
   { title: "vendors", url: "/vendors", icon: UserCheck },

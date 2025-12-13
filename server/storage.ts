@@ -248,6 +248,7 @@ export interface IStorage {
 
   // Payments
   getPayments(saleId?: string, sessionId?: string): Promise<Payment[]>;
+  getPaymentsByTenant(tenantId: string): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: string, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
 
@@ -1214,6 +1215,29 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(payments).where(and(...conditions)).orderBy(desc(payments.paymentDate));
     }
     return db.select().from(payments).orderBy(desc(payments.paymentDate));
+  }
+
+  async getPaymentsByTenant(tenantId: string): Promise<Payment[]> {
+    // Get payments linked to tenant's sales
+    const tenantSales = await db.select({ id: sales.id }).from(sales).where(eq(sales.tenantId, tenantId));
+    const saleIds = tenantSales.map(s => s.id);
+    
+    // Get payments linked to tenant's cash sessions
+    const tenantSessions = await db.select({ id: cashSessions.id }).from(cashSessions).where(eq(cashSessions.tenantId, tenantId));
+    const sessionIds = tenantSessions.map(s => s.id);
+    
+    // Build OR condition for both sale-linked and session-linked payments
+    const conditions = [];
+    if (saleIds.length > 0) {
+      conditions.push(sql`${payments.saleId} = ANY(${saleIds})`);
+    }
+    if (sessionIds.length > 0) {
+      conditions.push(sql`${payments.sessionId} = ANY(${sessionIds})`);
+    }
+    
+    if (conditions.length === 0) return [];
+    
+    return db.select().from(payments).where(sql`(${sql.join(conditions, sql` OR `)})`).orderBy(desc(payments.paymentDate));
   }
 
   async createPayment(payment: InsertPayment): Promise<Payment> {

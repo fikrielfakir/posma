@@ -109,7 +109,7 @@ export default function Dashboard() {
       ordered: "secondary",
       cancelled: "destructive",
     };
-    return <Badge variant={variants[status] || "secondary"} size="sm">{t(status)}</Badge>;
+    return <Badge variant={variants[status] || "secondary"}>{t(status)}</Badge>;
   };
 
   const getAlertBadge = (severity: string) => {
@@ -177,7 +177,7 @@ export default function Dashboard() {
               {t("revenue")} vs {t("expenses")}
             </CardTitle>
             <div className="flex gap-2">
-              <Badge variant="outline" size="sm">{t("thisWeek")}</Badge>
+              <Badge variant="outline">{t("thisWeek")}</Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -219,7 +219,7 @@ export default function Dashboard() {
         <Card data-testid="card-alerts">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-lg font-medium">{t("alerts")}</CardTitle>
-            <Badge variant="destructive" size="sm">{stockAlerts.length}</Badge>
+            <Badge variant="destructive">{stockAlerts.length}</Badge>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -242,7 +242,7 @@ export default function Dashboard() {
                       {alert.type === "overstock" && `${alert.current}/${alert.max} max`}
                     </p>
                   </div>
-                  <Badge variant={getAlertBadge(alert.severity)} size="sm">
+                  <Badge variant={getAlertBadge(alert.severity)}>
                     {t(alert.severity)}
                   </Badge>
                 </div>
@@ -260,7 +260,7 @@ export default function Dashboard() {
         <Card data-testid="card-top-products">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-lg font-medium">{t("topProducts")}</CardTitle>
-            <Badge variant="outline" size="sm">{t("thisMonth")}</Badge>
+            <Badge variant="outline">{t("thisMonth")}</Badge>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

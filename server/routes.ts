@@ -1704,5 +1704,228 @@ export async function registerRoutes(
     }
   });
 
+  // ============== FINANCIAL DASHBOARD METRICS ==============
+  
+  // Helper to safely parse numeric values with NaN guard
+  const safeNumber = (val: unknown): number => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+  
+  app.get("/api/financial/summary", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      
+      // Get tenant-scoped data
+      const sales = await storage.getSales(tenantId);
+      const payments = tenantId 
+        ? await storage.getPaymentsByTenant(tenantId)
+        : await storage.getPayments();
+      const invoices = await storage.getInvoices(tenantId);
+      const sessions = await storage.getCashSessions(tenantId);
+      
+      // Create lookup from saleId to sale date
+      const saleDateMap = new Map(sales.map(s => [s.id, s.saleDate]));
+      
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfWeek = new Date(startOfDay);
+      startOfWeek.setDate(startOfWeek.getDate() - 7);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      // Revenue calculations - use payments ledger for accuracy
+      const dailyRevenue = payments
+        .filter(p => {
+          const saleDate = p.saleId ? saleDateMap.get(p.saleId) : null;
+          return saleDate && new Date(saleDate) >= startOfDay;
+        })
+        .reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      
+      const weeklyRevenue = payments
+        .filter(p => {
+          const saleDate = p.saleId ? saleDateMap.get(p.saleId) : null;
+          return saleDate && new Date(saleDate) >= startOfWeek;
+        })
+        .reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      
+      const monthlyRevenue = payments
+        .filter(p => {
+          const saleDate = p.saleId ? saleDateMap.get(p.saleId) : null;
+          return saleDate && new Date(saleDate) >= startOfMonth;
+        })
+        .reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      
+      const totalRevenue = payments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      
+      // Payment method breakdown - tenant-scoped payments
+      const paymentBreakdown = {
+        cash: payments.filter(p => p.method === "cash").reduce((sum, p) => sum + safeNumber(p.amount), 0),
+        card: payments.filter(p => p.method === "card").reduce((sum, p) => sum + safeNumber(p.amount), 0),
+        check: payments.filter(p => p.method === "check").reduce((sum, p) => sum + safeNumber(p.amount), 0),
+        mobile: payments.filter(p => ["cashplus", "wafacash", "orange_money", "mobile_payment"].includes(p.method))
+          .reduce((sum, p) => sum + safeNumber(p.amount), 0),
+        transfer: payments.filter(p => p.method === "transfer").reduce((sum, p) => sum + safeNumber(p.amount), 0),
+      };
+      
+      // Outstanding invoices - with NaN guard
+      const outstandingInvoices = invoices.filter(i => 
+        i.status === "issued" || i.status === "partial_paid"
+      );
+      const outstandingAmount = outstandingInvoices.reduce((sum, i) => {
+        const total = safeNumber(i.total);
+        const paid = safeNumber(i.paidAmount);
+        return sum + Math.max(0, total - paid);
+      }, 0);
+      
+      // Cash session status - with NaN guard
+      const openSessions = sessions.filter(s => s.status === "open");
+      const totalCashInSessions = openSessions.reduce((sum, s) => {
+        const opening = safeNumber(s.openingAmount);
+        const cashPayments = safeNumber(s.totalCashPayments);
+        const withdrawals = safeNumber(s.totalWithdrawals);
+        return sum + opening + cashPayments - withdrawals;
+      }, 0);
+      
+      // Sales count
+      const salesCount = sales.length;
+      const todaySalesCount = sales.filter(s => s.saleDate && new Date(s.saleDate) >= startOfDay).length;
+      
+      res.json({
+        revenue: {
+          daily: dailyRevenue,
+          weekly: weeklyRevenue,
+          monthly: monthlyRevenue,
+          total: totalRevenue,
+        },
+        paymentBreakdown,
+        outstanding: {
+          count: outstandingInvoices.length,
+          amount: outstandingAmount,
+        },
+        cashSessions: {
+          openCount: openSessions.length,
+          totalCash: totalCashInSessions,
+        },
+        sales: {
+          total: salesCount,
+          today: todaySalesCount,
+        },
+      });
+    } catch (error) {
+      console.error("Financial summary error:", error);
+      res.status(500).json({ error: "Failed to fetch financial summary" });
+    }
+  });
+
+  app.get("/api/financial/top-products", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const sales = await storage.getSales(tenantId);
+      const saleIds = sales.map(s => s.id);
+      
+      // Get all sale items for these sales
+      const productSales: Record<string, { productId: string; quantity: number; revenue: number }> = {};
+      
+      for (const saleId of saleIds) {
+        const items = await storage.getSaleItems(saleId);
+        for (const item of items) {
+          if (!item.productId) continue;
+          if (!productSales[item.productId]) {
+            productSales[item.productId] = { productId: item.productId, quantity: 0, revenue: 0 };
+          }
+          productSales[item.productId].quantity += Number(item.quantity || 0);
+          productSales[item.productId].revenue += Number(item.total || 0);
+        }
+      }
+      
+      // Get product details and sort by revenue
+      const products = await storage.getProducts(tenantId);
+      const productMap = new Map(products.map(p => [p.id, p]));
+      
+      const topProducts = Object.values(productSales)
+        .map(ps => ({
+          ...ps,
+          product: productMap.get(ps.productId),
+        }))
+        .filter(ps => ps.product)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, limit)
+        .map(ps => {
+          const sellingPrice = safeNumber(ps.product?.sellingPrice);
+          const purchasePrice = safeNumber(ps.product?.purchasePrice);
+          let margin = 0;
+          if (sellingPrice > 0 && purchasePrice > 0) {
+            margin = ((sellingPrice - purchasePrice) / sellingPrice) * 100;
+          }
+          return {
+            id: ps.productId,
+            name: ps.product?.name || "Unknown",
+            sku: ps.product?.sku || "",
+            quantitySold: ps.quantity,
+            revenue: ps.revenue,
+            margin: Math.round(margin * 100) / 100,
+          };
+        });
+      
+      res.json(topProducts);
+    } catch (error) {
+      console.error("Top products error:", error);
+      res.status(500).json({ error: "Failed to fetch top products" });
+    }
+  });
+
+  app.get("/api/financial/daily-revenue", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const days = parseInt(req.query.days as string) || 7;
+      
+      const sales = await storage.getSales(tenantId);
+      const payments = tenantId 
+        ? await storage.getPaymentsByTenant(tenantId)
+        : await storage.getPayments();
+      
+      // Create lookup from saleId to sale date
+      const saleDateMap = new Map(sales.map(s => [s.id, s.saleDate]));
+      
+      // Group by day
+      const dailyData: Record<string, number> = {};
+      const today = new Date();
+      
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        dailyData[dateStr] = 0;
+      }
+      
+      // Sum payments by sale date
+      for (const payment of payments) {
+        if (!payment.saleId) continue;
+        const saleDate = saleDateMap.get(payment.saleId);
+        if (!saleDate) continue;
+        const dateStr = new Date(saleDate).toISOString().split('T')[0];
+        if (dailyData.hasOwnProperty(dateStr)) {
+          dailyData[dateStr] += safeNumber(payment.amount);
+        }
+      }
+      
+      const result = Object.entries(dailyData).map(([date, revenue]) => {
+        const d = new Date(date);
+        return {
+          date,
+          dayName: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+          revenue,
+        };
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Daily revenue error:", error);
+      res.status(500).json({ error: "Failed to fetch daily revenue" });
+    }
+  });
+
   return httpServer;
 }

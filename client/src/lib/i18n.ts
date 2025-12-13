@@ -25,6 +25,7 @@ export const translations: Record<Language, Record<string, string>> = {
     customers: "Clients",
     pos: "Point de Vente",
     cashSessions: "Caisse",
+    financial: "Finances",
     inventory: "Inventaire",
     users: "Utilisateurs",
     settings: "Paramètres",

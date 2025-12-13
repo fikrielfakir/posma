@@ -26,6 +26,7 @@ import Vendors from "@/pages/vendors";
 import POS from "@/pages/pos";
 import CashSessions from "@/pages/cash-sessions";
 import Invoices from "@/pages/invoices";
+import FinancialDashboard from "@/pages/financial-dashboard";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/pos" component={POS} />
       <Route path="/cash-sessions" component={CashSessions} />
       <Route path="/invoices" component={Invoices} />
+      <Route path="/financial" component={FinancialDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
