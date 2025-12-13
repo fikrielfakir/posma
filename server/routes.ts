@@ -32,6 +32,11 @@ import {
   insertChallengeSchema,
   insertChallengeParticipantSchema,
   insertVendorPerformanceSchema,
+  insertCashSessionSchema,
+  insertCashMovementSchema,
+  insertPaymentSchema,
+  insertInvoiceSchema,
+  insertPromotionSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1478,6 +1483,210 @@ export async function registerRoutes(
       res.json(leaderboard);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch vendor leaderboard" });
+    }
+  });
+
+  // ============== PAYMENTS ==============
+  app.get("/api/payments", async (req, res) => {
+    try {
+      const saleId = req.query.saleId as string | undefined;
+      const sessionId = req.query.sessionId as string | undefined;
+      const payments = await storage.getPayments(saleId, sessionId);
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
+  app.post("/api/payments", async (req, res) => {
+    try {
+      const data = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(data);
+      res.status(201).json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create payment" });
+    }
+  });
+
+  // ============== CASH SESSIONS ==============
+  app.get("/api/cash-sessions", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const status = req.query.status as string | undefined;
+      const sessions = await storage.getCashSessions(tenantId, status);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cash sessions" });
+    }
+  });
+
+  app.get("/api/cash-sessions/:id", async (req, res) => {
+    try {
+      const session = await storage.getCashSession(req.params.id);
+      if (!session) return res.status(404).json({ error: "Cash session not found" });
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cash session" });
+    }
+  });
+
+  app.post("/api/cash-sessions", async (req, res) => {
+    try {
+      const data = insertCashSessionSchema.parse(req.body);
+      const session = await storage.createCashSession(data);
+      res.status(201).json(session);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create cash session" });
+    }
+  });
+
+  app.patch("/api/cash-sessions/:id", async (req, res) => {
+    try {
+      const data = insertCashSessionSchema.partial().parse(req.body);
+      const session = await storage.updateCashSession(req.params.id, data);
+      if (!session) return res.status(404).json({ error: "Cash session not found" });
+      res.json(session);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update cash session" });
+    }
+  });
+
+  // ============== CASH MOVEMENTS ==============
+  app.get("/api/cash-sessions/:sessionId/movements", async (req, res) => {
+    try {
+      const movements = await storage.getCashMovements(req.params.sessionId);
+      res.json(movements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cash movements" });
+    }
+  });
+
+  app.post("/api/cash-movements", async (req, res) => {
+    try {
+      const data = insertCashMovementSchema.parse(req.body);
+      const movement = await storage.createCashMovement(data);
+      res.status(201).json(movement);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create cash movement" });
+    }
+  });
+
+  // ============== INVOICES ==============
+  app.get("/api/invoices", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const status = req.query.status as string | undefined;
+      const invoices = await storage.getInvoices(tenantId, status);
+      res.json(invoices);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get("/api/invoices/:id", async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoice" });
+    }
+  });
+
+  app.post("/api/invoices", async (req, res) => {
+    try {
+      const data = insertInvoiceSchema.parse(req.body);
+      const invoice = await storage.createInvoice(data);
+      res.status(201).json(invoice);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create invoice" });
+    }
+  });
+
+  app.patch("/api/invoices/:id", async (req, res) => {
+    try {
+      const data = insertInvoiceSchema.partial().parse(req.body);
+      const invoice = await storage.updateInvoice(req.params.id, data);
+      if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+      res.json(invoice);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update invoice" });
+    }
+  });
+
+  // ============== PROMOTIONS ==============
+  app.get("/api/promotions", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const isActive = req.query.isActive === "true" ? true : req.query.isActive === "false" ? false : undefined;
+      const promotions = await storage.getPromotions(tenantId, isActive);
+      res.json(promotions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch promotions" });
+    }
+  });
+
+  app.get("/api/promotions/:id", async (req, res) => {
+    try {
+      const promotion = await storage.getPromotion(req.params.id);
+      if (!promotion) return res.status(404).json({ error: "Promotion not found" });
+      res.json(promotion);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch promotion" });
+    }
+  });
+
+  app.post("/api/promotions", async (req, res) => {
+    try {
+      const data = insertPromotionSchema.parse(req.body);
+      const promotion = await storage.createPromotion(data);
+      res.status(201).json(promotion);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create promotion" });
+    }
+  });
+
+  app.patch("/api/promotions/:id", async (req, res) => {
+    try {
+      const data = insertPromotionSchema.partial().parse(req.body);
+      const promotion = await storage.updatePromotion(req.params.id, data);
+      if (!promotion) return res.status(404).json({ error: "Promotion not found" });
+      res.json(promotion);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update promotion" });
+    }
+  });
+
+  app.delete("/api/promotions/:id", async (req, res) => {
+    try {
+      await storage.deletePromotion(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete promotion" });
     }
   });
 
