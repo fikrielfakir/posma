@@ -18,6 +18,7 @@ import {
   Shield,
   UserCheck,
   Scan,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,6 +52,7 @@ const mainNavItems = [
 
 const salesNavItems = [
   { title: "pos", url: "/pos", icon: Scan },
+  { title: "cashSessions", url: "/cash-sessions", icon: Wallet },
   { title: "customers", url: "/customers", icon: Users },
   { title: "sales", url: "/sales", icon: Receipt },
   { title: "vendors", url: "/vendors", icon: UserCheck },

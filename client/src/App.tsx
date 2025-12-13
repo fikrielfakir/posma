@@ -24,6 +24,7 @@ import AIRecommendations from "@/pages/ai-recommendations";
 import AIAnomalies from "@/pages/ai-anomalies";
 import Vendors from "@/pages/vendors";
 import POS from "@/pages/pos";
+import CashSessions from "@/pages/cash-sessions";
 
 function Router() {
   return (
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/ai/anomalies" component={AIAnomalies} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/pos" component={POS} />
+      <Route path="/cash-sessions" component={CashSessions} />
       <Route component={NotFound} />
     </Switch>
   );

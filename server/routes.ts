@@ -1561,6 +1561,20 @@ export async function registerRoutes(
   });
 
   // ============== CASH MOVEMENTS ==============
+  app.get("/api/cash-movements", async (req, res) => {
+    try {
+      const sessionId = req.query.sessionId as string | undefined;
+      if (sessionId) {
+        const movements = await storage.getCashMovements(sessionId);
+        res.json(movements);
+      } else {
+        res.json([]);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cash movements" });
+    }
+  });
+
   app.get("/api/cash-sessions/:sessionId/movements", async (req, res) => {
     try {
       const movements = await storage.getCashMovements(req.params.sessionId);
