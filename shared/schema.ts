@@ -985,6 +985,147 @@ export const insertVendorPredictionSchema = createInsertSchema(vendorPredictions
 export type InsertVendorPrediction = z.infer<typeof insertVendorPredictionSchema>;
 export type VendorPrediction = typeof vendorPredictions.$inferSelect;
 
+// ============== CASH SESSIONS (GESTION DE CAISSE) ==============
+export const cashSessions = pgTable("cash_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  cashierId: varchar("cashier_id").references(() => users.id),
+  sessionNumber: text("session_number").notNull(),
+  status: text("status").default("open"), // open, closed
+  openingDate: timestamp("opening_date").defaultNow(),
+  closingDate: timestamp("closing_date"),
+  openingCash: decimal("opening_cash", { precision: 12, scale: 2 }).default("0"),
+  expectedCash: decimal("expected_cash", { precision: 12, scale: 2 }).default("0"),
+  actualCash: decimal("actual_cash", { precision: 12, scale: 2 }),
+  cashDifference: decimal("cash_difference", { precision: 12, scale: 2 }),
+  differenceJustification: text("difference_justification"),
+  totalSales: decimal("total_sales", { precision: 12, scale: 2 }).default("0"),
+  totalCashPayments: decimal("total_cash_payments", { precision: 12, scale: 2 }).default("0"),
+  totalCardPayments: decimal("total_card_payments", { precision: 12, scale: 2 }).default("0"),
+  totalCheckPayments: decimal("total_check_payments", { precision: 12, scale: 2 }).default("0"),
+  totalMobilePayments: decimal("total_mobile_payments", { precision: 12, scale: 2 }).default("0"),
+  totalWithdrawals: decimal("total_withdrawals", { precision: 12, scale: 2 }).default("0"),
+  totalDeposits: decimal("total_deposits", { precision: 12, scale: 2 }).default("0"),
+  notes: text("notes"),
+});
+
+export const insertCashSessionSchema = createInsertSchema(cashSessions).omit({ id: true });
+export type InsertCashSession = z.infer<typeof insertCashSessionSchema>;
+export type CashSession = typeof cashSessions.$inferSelect;
+
+// ============== CASH MOVEMENTS (ENTRÉES/SORTIES) ==============
+export const cashMovements = pgTable("cash_movements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  sessionId: varchar("session_id").references(() => cashSessions.id),
+  type: text("type").notNull(), // deposit, withdrawal, bank_deposit
+  reason: text("reason"), // expense, advance, petty_cash, bank_transfer, other
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  description: text("description"),
+  reference: text("reference"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCashMovementSchema = createInsertSchema(cashMovements).omit({ id: true, createdAt: true });
+export type InsertCashMovement = z.infer<typeof insertCashMovementSchema>;
+export type CashMovement = typeof cashMovements.$inferSelect;
+
+// ============== PAYMENTS (MULTI-PAYMENT SUPPORT) ==============
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  saleId: varchar("sale_id").references(() => sales.id),
+  sessionId: varchar("session_id").references(() => cashSessions.id),
+  method: text("method").notNull(), // cash, card, check, transfer, mobile_payment, cashplus, wafacash, orange_money
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  receivedAmount: decimal("received_amount", { precision: 12, scale: 2 }), // For cash payments (amount given by customer)
+  changeAmount: decimal("change_amount", { precision: 12, scale: 2 }), // Change returned
+  reference: text("reference"), // Check number, card transaction ID, etc.
+  status: text("status").default("completed"), // pending, completed, cancelled, refunded
+  paymentDate: timestamp("payment_date").defaultNow(),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true });
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
+
+// ============== INVOICES (MOROCCAN COMPLIANT) ==============
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  saleId: varchar("sale_id").references(() => sales.id),
+  customerId: varchar("customer_id").references(() => customers.id),
+  invoiceType: text("invoice_type").default("standard"), // standard, proforma, credit_note, advance
+  invoiceNumber: text("invoice_number").notNull(),
+  invoiceDate: timestamp("invoice_date").defaultNow(),
+  dueDate: timestamp("due_date"),
+  // Moroccan legal requirements
+  ice: text("ice"), // Identifiant Commun de l'Entreprise
+  identifiantFiscal: text("if"), // Identifiant Fiscal
+  registreCommerce: text("rc"), // Registre de Commerce
+  patente: text("patente"),
+  cnss: text("cnss"),
+  // Amounts
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).default("0"),
+  discountAmount: decimal("discount_amount", { precision: 12, scale: 2 }).default("0"),
+  // TVA breakdown by rate
+  tva20Amount: decimal("tva_20_amount", { precision: 12, scale: 2 }).default("0"),
+  tva14Amount: decimal("tva_14_amount", { precision: 12, scale: 2 }).default("0"),
+  tva10Amount: decimal("tva_10_amount", { precision: 12, scale: 2 }).default("0"),
+  tva7Amount: decimal("tva_7_amount", { precision: 12, scale: 2 }).default("0"),
+  totalTva: decimal("total_tva", { precision: 12, scale: 2 }).default("0"),
+  timbreFiscal: decimal("timbre_fiscal", { precision: 12, scale: 2 }).default("0"), // Stamp duty
+  retenueSource: decimal("retenue_source", { precision: 12, scale: 2 }).default("0"), // Withholding tax
+  total: decimal("total", { precision: 12, scale: 2 }).default("0"),
+  currency: text("currency").default("MAD"),
+  exchangeRate: decimal("exchange_rate", { precision: 12, scale: 6 }).default("1"),
+  // Status
+  status: text("status").default("draft"), // draft, issued, paid, partial_paid, cancelled, credit_noted
+  paidAmount: decimal("paid_amount", { precision: 12, scale: 2 }).default("0"),
+  // QR Code for verification
+  qrCode: text("qr_code"),
+  // Metadata
+  notes: text("notes"),
+  internalNotes: text("internal_notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+// ============== PROMOTIONS ==============
+export const promotions = pgTable("promotions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // percentage, fixed_amount, buy_x_get_y, bundle
+  discountValue: decimal("discount_value", { precision: 12, scale: 2 }),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }),
+  minimumPurchase: decimal("minimum_purchase", { precision: 12, scale: 2 }),
+  maximumDiscount: decimal("maximum_discount", { precision: 12, scale: 2 }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  applicableProducts: jsonb("applicable_products").$type<string[]>().default([]),
+  applicableCategories: jsonb("applicable_categories").$type<string[]>().default([]),
+  couponCode: text("coupon_code"),
+  usageLimit: integer("usage_limit"),
+  usedCount: integer("used_count").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
+export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
+export type Promotion = typeof promotions.$inferSelect;
+
 // ============== RELATIONS ==============
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
@@ -1030,4 +1171,28 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
 export const saleItemsRelations = relations(saleItems, ({ one }) => ({
   sale: one(sales, { fields: [saleItems.saleId], references: [sales.id] }),
   product: one(products, { fields: [saleItems.productId], references: [products.id] }),
+}));
+
+export const cashSessionsRelations = relations(cashSessions, ({ one, many }) => ({
+  warehouse: one(warehouses, { fields: [cashSessions.warehouseId], references: [warehouses.id] }),
+  cashier: one(users, { fields: [cashSessions.cashierId], references: [users.id] }),
+  movements: many(cashMovements),
+  payments: many(payments),
+}));
+
+export const cashMovementsRelations = relations(cashMovements, ({ one }) => ({
+  session: one(cashSessions, { fields: [cashMovements.sessionId], references: [cashSessions.id] }),
+  createdByUser: one(users, { fields: [cashMovements.createdBy], references: [users.id] }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  sale: one(sales, { fields: [payments.saleId], references: [sales.id] }),
+  session: one(cashSessions, { fields: [payments.sessionId], references: [cashSessions.id] }),
+  createdByUser: one(users, { fields: [payments.createdBy], references: [users.id] }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+  sale: one(sales, { fields: [invoices.saleId], references: [sales.id] }),
+  customer: one(customers, { fields: [invoices.customerId], references: [customers.id] }),
+  createdByUser: one(users, { fields: [invoices.createdBy], references: [users.id] }),
 }));

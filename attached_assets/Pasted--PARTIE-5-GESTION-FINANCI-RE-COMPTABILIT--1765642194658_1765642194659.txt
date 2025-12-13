@@ -1,0 +1,78 @@
+💰 PARTIE 5: GESTION FINANCIÈRE & COMPTABILITÉ
+═══════════════════════════════════════════════════════════════════════════════
+
+POINT DE VENTE (POS):
+- Interface caisse tactile ultra-rapide
+- Scan code-barres avec feedback sonore
+- Recherche produit: nom, code, scan, photo (IA)
+- Panier avec modification quantités, remises
+- Application remises: montant fixe, %, bon d'achat
+- Gestion promotions automatiques
+- Calcul TVA multi-taux marocain
+- Multi-paiements: espèces, carte, chèque, virement, mobile money
+- Rendu monnaie automatique
+- Ticket de caisse format 80mm personnalisable
+- Envoi ticket par email/SMS
+- Mode hors-ligne avec synchronisation différée
+- Historique des ventes consultable
+
+GESTION DE CAISSE:
+- Ouverture caisse avec fond initial
+- Entrées/sorties hors ventes (dépenses, prélèvements)
+- Clôture avec comptage espèces/chèques/cartes
+- Détection écarts avec justification obligatoire
+- Versement banque avec bordereau
+- Historique complet par caisse et par opérateur
+- Rapports de caisse quotidiens
+- Contrôle accès caisse par code PIN
+
+FACTURATION CONFORME MAROC:
+- Génération automatique factures normalisées
+- Mentions légales obligatoires (ICE, IF, RC, Patente, CNSS)
+- Numérotation séquentielle sans trou
+- Factures: normale, proforma, avoir, acompte
+- Devis avec conversion en facture
+- Multi-devises avec taux de change
+- Calcul TVA par taux (20%, 14%, 10%, 7%, exonéré)
+- Retenue à la source si applicable
+- Timbre fiscal automatique
+- QR code pour vérification authenticité
+- Archivage légal 10 ans
+- Export PDF, envoi email automatique
+- Intégration future e-facturation Maroc
+
+PAIEMENTS:
+- Gestion multi-méthodes de paiement
+- Paiement mobile Maroc: CashPlus, Wafacash, Orange Money
+- Intégration CMI (Centre Monétique Interbancaire)
+- Paiements fractionnés (3x, 4x sans frais)
+- Avances clients avec suivi
+- Gestion impayés et relances automatiques (J+7, J+15, J+30)
+- Échéancier de paiement flexible
+- Lettrage automatique paiements-factures
+- Rapprochement bancaire avec import relevés
+- Prévisions de trésorerie avec IA
+
+COMPTABILITÉ:
+- Plan comptable marocain (CGNC)
+- Comptabilité en partie double
+- Journaux: ventes, achats, banque, caisse, OD
+- Grand livre et balance
+- Compte de résultat prévisionnel vs réel
+- Bilan comptable
+- Tableau de financement
+- Exports compatibles: Sage, Ciel, Compta.ma
+- Déclarations TVA pré-remplies
+- Liasse fiscale annuelle
+- Intégration expert-comptable
+
+ANALYSES FINANCIÈRES:
+- Dashboards financiers temps réel
+- CA par: jour, vendeur, catégorie, point de vente
+- Marge brute et nette
+- Seuil de rentabilité (break-even)
+- Ratios financiers clés
+- Prévisions trésorerie à 90 jours (ML)
+- Analyse de rentabilité par produit/client
+- Budget vs réel avec écarts
+- Simulation scénarios financiers

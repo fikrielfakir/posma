@@ -31,6 +31,11 @@ import {
   challenges, type Challenge, type InsertChallenge,
   challengeParticipants, type ChallengeParticipant, type InsertChallengeParticipant,
   vendorPerformance, type VendorPerformance, type InsertVendorPerformance,
+  cashSessions, type CashSession, type InsertCashSession,
+  cashMovements, type CashMovement, type InsertCashMovement,
+  payments, type Payment, type InsertPayment,
+  invoices, type Invoice, type InsertInvoice,
+  promotions, type Promotion, type InsertPromotion,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -229,6 +234,35 @@ export interface IStorage {
 
   // Vendor Leaderboard
   getVendorLeaderboard(tenantId: string, periodType: string): Promise<Array<{vendor: Vendor; performance: VendorPerformance | null; rank: number}>>;
+
+  // Cash Sessions
+  getCashSessions(tenantId?: string, status?: string): Promise<CashSession[]>;
+  getCashSession(id: string): Promise<CashSession | undefined>;
+  getOpenCashSession(cashierId: string): Promise<CashSession | undefined>;
+  createCashSession(session: InsertCashSession): Promise<CashSession>;
+  updateCashSession(id: string, session: Partial<InsertCashSession>): Promise<CashSession | undefined>;
+
+  // Cash Movements
+  getCashMovements(sessionId: string): Promise<CashMovement[]>;
+  createCashMovement(movement: InsertCashMovement): Promise<CashMovement>;
+
+  // Payments
+  getPayments(saleId?: string, sessionId?: string): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
+
+  // Invoices
+  getInvoices(tenantId?: string, status?: string): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+
+  // Promotions
+  getPromotions(tenantId?: string, isActive?: boolean): Promise<Promotion[]>;
+  getPromotion(id: string): Promise<Promotion | undefined>;
+  createPromotion(promotion: InsertPromotion): Promise<Promotion>;
+  updatePromotion(id: string, promotion: Partial<InsertPromotion>): Promise<Promotion | undefined>;
+  deletePromotion(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1128,6 +1162,125 @@ export class DatabaseStorage implements IStorage {
     result.forEach((item, index) => { item.rank = index + 1; });
     
     return result;
+  }
+
+  // Cash Sessions
+  async getCashSessions(tenantId?: string, status?: string): Promise<CashSession[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(cashSessions.tenantId, tenantId));
+    if (status) conditions.push(eq(cashSessions.status, status));
+    if (conditions.length > 0) {
+      return db.select().from(cashSessions).where(and(...conditions)).orderBy(desc(cashSessions.openingDate));
+    }
+    return db.select().from(cashSessions).orderBy(desc(cashSessions.openingDate));
+  }
+
+  async getCashSession(id: string): Promise<CashSession | undefined> {
+    const [session] = await db.select().from(cashSessions).where(eq(cashSessions.id, id));
+    return session;
+  }
+
+  async getOpenCashSession(cashierId: string): Promise<CashSession | undefined> {
+    const [session] = await db.select().from(cashSessions).where(and(eq(cashSessions.cashierId, cashierId), eq(cashSessions.status, "open")));
+    return session;
+  }
+
+  async createCashSession(session: InsertCashSession): Promise<CashSession> {
+    const [created] = await db.insert(cashSessions).values(session).returning();
+    return created;
+  }
+
+  async updateCashSession(id: string, session: Partial<InsertCashSession>): Promise<CashSession | undefined> {
+    const [updated] = await db.update(cashSessions).set(session).where(eq(cashSessions.id, id)).returning();
+    return updated;
+  }
+
+  // Cash Movements
+  async getCashMovements(sessionId: string): Promise<CashMovement[]> {
+    return db.select().from(cashMovements).where(eq(cashMovements.sessionId, sessionId)).orderBy(desc(cashMovements.createdAt));
+  }
+
+  async createCashMovement(movement: InsertCashMovement): Promise<CashMovement> {
+    const [created] = await db.insert(cashMovements).values(movement).returning();
+    return created;
+  }
+
+  // Payments
+  async getPayments(saleId?: string, sessionId?: string): Promise<Payment[]> {
+    const conditions = [];
+    if (saleId) conditions.push(eq(payments.saleId, saleId));
+    if (sessionId) conditions.push(eq(payments.sessionId, sessionId));
+    if (conditions.length > 0) {
+      return db.select().from(payments).where(and(...conditions)).orderBy(desc(payments.paymentDate));
+    }
+    return db.select().from(payments).orderBy(desc(payments.paymentDate));
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [created] = await db.insert(payments).values(payment).returning();
+    return created;
+  }
+
+  async updatePayment(id: string, payment: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const [updated] = await db.update(payments).set(payment).where(eq(payments.id, id)).returning();
+    return updated;
+  }
+
+  // Invoices
+  async getInvoices(tenantId?: string, status?: string): Promise<Invoice[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(invoices.tenantId, tenantId));
+    if (status) conditions.push(eq(invoices.status, status));
+    if (conditions.length > 0) {
+      return db.select().from(invoices).where(and(...conditions)).orderBy(desc(invoices.invoiceDate));
+    }
+    return db.select().from(invoices).orderBy(desc(invoices.invoiceDate));
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    return invoice;
+  }
+
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [created] = await db.insert(invoices).values(invoice).returning();
+    return created;
+  }
+
+  async updateInvoice(id: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updated] = await db.update(invoices).set(invoice).where(eq(invoices.id, id)).returning();
+    return updated;
+  }
+
+  // Promotions
+  async getPromotions(tenantId?: string, isActive?: boolean): Promise<Promotion[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(promotions.tenantId, tenantId));
+    if (isActive !== undefined) conditions.push(eq(promotions.isActive, isActive));
+    if (conditions.length > 0) {
+      return db.select().from(promotions).where(and(...conditions)).orderBy(desc(promotions.createdAt));
+    }
+    return db.select().from(promotions).orderBy(desc(promotions.createdAt));
+  }
+
+  async getPromotion(id: string): Promise<Promotion | undefined> {
+    const [promotion] = await db.select().from(promotions).where(eq(promotions.id, id));
+    return promotion;
+  }
+
+  async createPromotion(promotion: InsertPromotion): Promise<Promotion> {
+    const [created] = await db.insert(promotions).values(promotion).returning();
+    return created;
+  }
+
+  async updatePromotion(id: string, promotion: Partial<InsertPromotion>): Promise<Promotion | undefined> {
+    const [updated] = await db.update(promotions).set(promotion).where(eq(promotions.id, id)).returning();
+    return updated;
+  }
+
+  async deletePromotion(id: string): Promise<boolean> {
+    await db.delete(promotions).where(eq(promotions.id, id));
+    return true;
   }
 }
 
