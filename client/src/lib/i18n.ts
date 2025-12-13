@@ -192,6 +192,7 @@ export const translations: Record<Language, Record<string, string>> = {
     profile: "Profil",
     notifications: "Notifications",
     security: "Sécurité",
+    vendors: "Vendeurs",
   },
   ar: {
     dashboard: "لوحة القيادة",
@@ -370,6 +371,7 @@ export const translations: Record<Language, Record<string, string>> = {
     profile: "الملف الشخصي",
     notifications: "الإشعارات",
     security: "الأمان",
+    vendors: "البائعين",
   },
   darija: {
     dashboard: "لوحة التحكم",
@@ -548,6 +550,7 @@ export const translations: Record<Language, Record<string, string>> = {
     profile: "البروفيل",
     notifications: "الإشعارات",
     security: "الأمان",
+    vendors: "الباعة",
   },
 };
 

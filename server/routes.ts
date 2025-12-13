@@ -22,6 +22,16 @@ import {
   insertInventoryCountSchema,
   insertStockAlertSchema,
   insertCurrencyRateSchema,
+  insertVendorSchema,
+  insertVendorAssignmentSchema,
+  insertCommissionRuleSchema,
+  insertCommissionSchema,
+  insertVendorObjectiveSchema,
+  insertBadgeSchema,
+  insertVendorBadgeSchema,
+  insertChallengeSchema,
+  insertChallengeParticipantSchema,
+  insertVendorPerformanceSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1063,6 +1073,411 @@ export async function registerRoutes(
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // ============== VENDORS ==============
+  app.get("/api/vendors", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const vendors = await storage.getVendors(tenantId);
+      res.json(vendors);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendors" });
+    }
+  });
+
+  app.get("/api/vendors/:id", async (req, res) => {
+    try {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor) return res.status(404).json({ error: "Vendor not found" });
+      res.json(vendor);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor" });
+    }
+  });
+
+  app.post("/api/vendors", async (req, res) => {
+    try {
+      const data = insertVendorSchema.parse(req.body);
+      const vendor = await storage.createVendor(data);
+      res.status(201).json(vendor);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create vendor" });
+    }
+  });
+
+  app.patch("/api/vendors/:id", async (req, res) => {
+    try {
+      const data = insertVendorSchema.partial().parse(req.body);
+      const vendor = await storage.updateVendor(req.params.id, data);
+      if (!vendor) return res.status(404).json({ error: "Vendor not found" });
+      res.json(vendor);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update vendor" });
+    }
+  });
+
+  app.delete("/api/vendors/:id", async (req, res) => {
+    try {
+      await storage.deleteVendor(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vendor" });
+    }
+  });
+
+  // ============== VENDOR ASSIGNMENTS ==============
+  app.get("/api/vendors/:vendorId/assignments", async (req, res) => {
+    try {
+      const assignments = await storage.getVendorAssignments(req.params.vendorId);
+      res.json(assignments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor assignments" });
+    }
+  });
+
+  app.post("/api/vendor-assignments", async (req, res) => {
+    try {
+      const data = insertVendorAssignmentSchema.parse(req.body);
+      const assignment = await storage.createVendorAssignment(data);
+      res.status(201).json(assignment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create vendor assignment" });
+    }
+  });
+
+  app.patch("/api/vendor-assignments/:id", async (req, res) => {
+    try {
+      const data = insertVendorAssignmentSchema.partial().parse(req.body);
+      const assignment = await storage.updateVendorAssignment(req.params.id, data);
+      if (!assignment) return res.status(404).json({ error: "Vendor assignment not found" });
+      res.json(assignment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update vendor assignment" });
+    }
+  });
+
+  app.delete("/api/vendor-assignments/:id", async (req, res) => {
+    try {
+      await storage.deleteVendorAssignment(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vendor assignment" });
+    }
+  });
+
+  // ============== COMMISSION RULES ==============
+  app.get("/api/commission-rules", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const vendorId = req.query.vendorId as string | undefined;
+      const rules = await storage.getCommissionRules(tenantId, vendorId);
+      res.json(rules);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch commission rules" });
+    }
+  });
+
+  app.post("/api/commission-rules", async (req, res) => {
+    try {
+      const data = insertCommissionRuleSchema.parse(req.body);
+      const rule = await storage.createCommissionRule(data);
+      res.status(201).json(rule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create commission rule" });
+    }
+  });
+
+  app.patch("/api/commission-rules/:id", async (req, res) => {
+    try {
+      const data = insertCommissionRuleSchema.partial().parse(req.body);
+      const rule = await storage.updateCommissionRule(req.params.id, data);
+      if (!rule) return res.status(404).json({ error: "Commission rule not found" });
+      res.json(rule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update commission rule" });
+    }
+  });
+
+  app.delete("/api/commission-rules/:id", async (req, res) => {
+    try {
+      await storage.deleteCommissionRule(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete commission rule" });
+    }
+  });
+
+  // ============== COMMISSIONS ==============
+  app.get("/api/commissions", async (req, res) => {
+    try {
+      const vendorId = req.query.vendorId as string | undefined;
+      const status = req.query.status as string | undefined;
+      const commissions = await storage.getCommissions(vendorId, status);
+      res.json(commissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch commissions" });
+    }
+  });
+
+  app.post("/api/commissions", async (req, res) => {
+    try {
+      const data = insertCommissionSchema.parse(req.body);
+      const commission = await storage.createCommission(data);
+      res.status(201).json(commission);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create commission" });
+    }
+  });
+
+  app.patch("/api/commissions/:id", async (req, res) => {
+    try {
+      const data = insertCommissionSchema.partial().parse(req.body);
+      const commission = await storage.updateCommission(req.params.id, data);
+      if (!commission) return res.status(404).json({ error: "Commission not found" });
+      res.json(commission);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update commission" });
+    }
+  });
+
+  // ============== VENDOR OBJECTIVES ==============
+  app.get("/api/vendor-objectives", async (req, res) => {
+    try {
+      const vendorId = req.query.vendorId as string | undefined;
+      const status = req.query.status as string | undefined;
+      const objectives = await storage.getVendorObjectives(vendorId, status);
+      res.json(objectives);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor objectives" });
+    }
+  });
+
+  app.post("/api/vendor-objectives", async (req, res) => {
+    try {
+      const data = insertVendorObjectiveSchema.parse(req.body);
+      const objective = await storage.createVendorObjective(data);
+      res.status(201).json(objective);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create vendor objective" });
+    }
+  });
+
+  app.patch("/api/vendor-objectives/:id", async (req, res) => {
+    try {
+      const data = insertVendorObjectiveSchema.partial().parse(req.body);
+      const objective = await storage.updateVendorObjective(req.params.id, data);
+      if (!objective) return res.status(404).json({ error: "Vendor objective not found" });
+      res.json(objective);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update vendor objective" });
+    }
+  });
+
+  // ============== BADGES ==============
+  app.get("/api/badges", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const badges = await storage.getBadges(tenantId);
+      res.json(badges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
+
+  app.post("/api/badges", async (req, res) => {
+    try {
+      const data = insertBadgeSchema.parse(req.body);
+      const badge = await storage.createBadge(data);
+      res.status(201).json(badge);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create badge" });
+    }
+  });
+
+  app.patch("/api/badges/:id", async (req, res) => {
+    try {
+      const data = insertBadgeSchema.partial().parse(req.body);
+      const badge = await storage.updateBadge(req.params.id, data);
+      if (!badge) return res.status(404).json({ error: "Badge not found" });
+      res.json(badge);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update badge" });
+    }
+  });
+
+  // ============== VENDOR BADGES ==============
+  app.get("/api/vendors/:vendorId/badges", async (req, res) => {
+    try {
+      const badges = await storage.getVendorBadges(req.params.vendorId);
+      res.json(badges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor badges" });
+    }
+  });
+
+  app.post("/api/vendor-badges", async (req, res) => {
+    try {
+      const data = insertVendorBadgeSchema.parse(req.body);
+      const vendorBadge = await storage.awardBadge(data);
+      res.status(201).json(vendorBadge);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to award badge" });
+    }
+  });
+
+  // ============== CHALLENGES ==============
+  app.get("/api/challenges", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string | undefined;
+      const status = req.query.status as string | undefined;
+      const challenges = await storage.getChallenges(tenantId, status);
+      res.json(challenges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch challenges" });
+    }
+  });
+
+  app.post("/api/challenges", async (req, res) => {
+    try {
+      const data = insertChallengeSchema.parse(req.body);
+      const challenge = await storage.createChallenge(data);
+      res.status(201).json(challenge);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create challenge" });
+    }
+  });
+
+  app.patch("/api/challenges/:id", async (req, res) => {
+    try {
+      const data = insertChallengeSchema.partial().parse(req.body);
+      const challenge = await storage.updateChallenge(req.params.id, data);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      res.json(challenge);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update challenge" });
+    }
+  });
+
+  // ============== CHALLENGE PARTICIPANTS ==============
+  app.get("/api/challenges/:challengeId/participants", async (req, res) => {
+    try {
+      const participants = await storage.getChallengeParticipants(req.params.challengeId);
+      res.json(participants);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch challenge participants" });
+    }
+  });
+
+  app.post("/api/challenge-participants", async (req, res) => {
+    try {
+      const data = insertChallengeParticipantSchema.parse(req.body);
+      const participant = await storage.joinChallenge(data);
+      res.status(201).json(participant);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to join challenge" });
+    }
+  });
+
+  app.patch("/api/challenge-participants/:id", async (req, res) => {
+    try {
+      const data = insertChallengeParticipantSchema.partial().parse(req.body);
+      const participant = await storage.updateChallengeParticipant(req.params.id, data);
+      if (!participant) return res.status(404).json({ error: "Participant not found" });
+      res.json(participant);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update participant" });
+    }
+  });
+
+  // ============== VENDOR PERFORMANCE ==============
+  app.get("/api/vendors/:vendorId/performance", async (req, res) => {
+    try {
+      const periodType = req.query.periodType as string | undefined;
+      const performance = await storage.getVendorPerformance(req.params.vendorId, periodType);
+      res.json(performance);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor performance" });
+    }
+  });
+
+  app.post("/api/vendor-performance", async (req, res) => {
+    try {
+      const data = insertVendorPerformanceSchema.parse(req.body);
+      const performance = await storage.createVendorPerformance(data);
+      res.status(201).json(performance);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create vendor performance" });
+    }
+  });
+
+  // ============== VENDOR LEADERBOARD ==============
+  app.get("/api/vendor-leaderboard", async (req, res) => {
+    try {
+      const tenantId = req.query.tenantId as string;
+      const periodType = (req.query.periodType as string) || "monthly";
+      if (!tenantId) {
+        return res.status(400).json({ error: "tenantId is required" });
+      }
+      const leaderboard = await storage.getVendorLeaderboard(tenantId, periodType);
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor leaderboard" });
     }
   });
 

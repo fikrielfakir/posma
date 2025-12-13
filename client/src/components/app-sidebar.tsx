@@ -16,6 +16,7 @@ import {
   MessageCircle,
   Lightbulb,
   Shield,
+  UserCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const mainNavItems = [
 const salesNavItems = [
   { title: "customers", url: "/customers", icon: Users },
   { title: "sales", url: "/sales", icon: Receipt },
+  { title: "vendors", url: "/vendors", icon: UserCheck },
 ];
 
 const managementNavItems = [

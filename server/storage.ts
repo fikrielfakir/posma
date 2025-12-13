@@ -21,6 +21,16 @@ import {
   inventoryCounts, type InventoryCount, type InsertInventoryCount,
   stockAlerts, type StockAlert, type InsertStockAlert,
   currencyRates, type CurrencyRate, type InsertCurrencyRate,
+  vendors, type Vendor, type InsertVendor,
+  vendorAssignments, type VendorAssignment, type InsertVendorAssignment,
+  commissionRules, type CommissionRule, type InsertCommissionRule,
+  commissions, type Commission, type InsertCommission,
+  vendorObjectives, type VendorObjective, type InsertVendorObjective,
+  badges, type Badge, type InsertBadge,
+  vendorBadges, type VendorBadge, type InsertVendorBadge,
+  challenges, type Challenge, type InsertChallenge,
+  challengeParticipants, type ChallengeParticipant, type InsertChallengeParticipant,
+  vendorPerformance, type VendorPerformance, type InsertVendorPerformance,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -164,6 +174,61 @@ export interface IStorage {
     totalStockValue: number;
     todaySales: number;
   }>;
+
+  // Vendors
+  getVendors(tenantId?: string): Promise<Vendor[]>;
+  getVendor(id: string): Promise<Vendor | undefined>;
+  createVendor(vendor: InsertVendor): Promise<Vendor>;
+  updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor | undefined>;
+  deleteVendor(id: string): Promise<boolean>;
+
+  // Vendor Assignments
+  getVendorAssignments(vendorId: string): Promise<VendorAssignment[]>;
+  createVendorAssignment(assignment: InsertVendorAssignment): Promise<VendorAssignment>;
+  updateVendorAssignment(id: string, assignment: Partial<InsertVendorAssignment>): Promise<VendorAssignment | undefined>;
+  deleteVendorAssignment(id: string): Promise<boolean>;
+
+  // Commission Rules
+  getCommissionRules(tenantId?: string, vendorId?: string): Promise<CommissionRule[]>;
+  createCommissionRule(rule: InsertCommissionRule): Promise<CommissionRule>;
+  updateCommissionRule(id: string, rule: Partial<InsertCommissionRule>): Promise<CommissionRule | undefined>;
+  deleteCommissionRule(id: string): Promise<boolean>;
+
+  // Commissions
+  getCommissions(vendorId?: string, status?: string): Promise<Commission[]>;
+  createCommission(commission: InsertCommission): Promise<Commission>;
+  updateCommission(id: string, commission: Partial<InsertCommission>): Promise<Commission | undefined>;
+
+  // Vendor Objectives
+  getVendorObjectives(vendorId?: string, status?: string): Promise<VendorObjective[]>;
+  createVendorObjective(objective: InsertVendorObjective): Promise<VendorObjective>;
+  updateVendorObjective(id: string, objective: Partial<InsertVendorObjective>): Promise<VendorObjective | undefined>;
+
+  // Badges
+  getBadges(tenantId?: string): Promise<Badge[]>;
+  createBadge(badge: InsertBadge): Promise<Badge>;
+  updateBadge(id: string, badge: Partial<InsertBadge>): Promise<Badge | undefined>;
+
+  // Vendor Badges
+  getVendorBadges(vendorId: string): Promise<VendorBadge[]>;
+  awardBadge(vendorBadge: InsertVendorBadge): Promise<VendorBadge>;
+
+  // Challenges
+  getChallenges(tenantId?: string, status?: string): Promise<Challenge[]>;
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: string, challenge: Partial<InsertChallenge>): Promise<Challenge | undefined>;
+
+  // Challenge Participants
+  getChallengeParticipants(challengeId: string): Promise<ChallengeParticipant[]>;
+  joinChallenge(participant: InsertChallengeParticipant): Promise<ChallengeParticipant>;
+  updateChallengeParticipant(id: string, participant: Partial<InsertChallengeParticipant>): Promise<ChallengeParticipant | undefined>;
+
+  // Vendor Performance
+  getVendorPerformance(vendorId: string, periodType?: string): Promise<VendorPerformance[]>;
+  createVendorPerformance(performance: InsertVendorPerformance): Promise<VendorPerformance>;
+
+  // Vendor Leaderboard
+  getVendorLeaderboard(tenantId: string, periodType: string): Promise<Array<{vendor: Vendor; performance: VendorPerformance | null; rank: number}>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -846,6 +911,223 @@ export class DatabaseStorage implements IStorage {
       totalStockValue: Number(stockValueQuery[0]?.total || 0),
       todaySales: Number(todaySalesQuery[0]?.total || 0),
     };
+  }
+
+  // Vendors
+  async getVendors(tenantId?: string): Promise<Vendor[]> {
+    if (tenantId) {
+      return db.select().from(vendors).where(eq(vendors.tenantId, tenantId)).orderBy(vendors.fullName);
+    }
+    return db.select().from(vendors).orderBy(vendors.fullName);
+  }
+
+  async getVendor(id: string): Promise<Vendor | undefined> {
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
+    return vendor;
+  }
+
+  async createVendor(vendor: InsertVendor): Promise<Vendor> {
+    const [created] = await db.insert(vendors).values(vendor).returning();
+    return created;
+  }
+
+  async updateVendor(id: string, vendor: Partial<InsertVendor>): Promise<Vendor | undefined> {
+    const [updated] = await db.update(vendors).set(vendor).where(eq(vendors.id, id)).returning();
+    return updated;
+  }
+
+  async deleteVendor(id: string): Promise<boolean> {
+    await db.delete(vendors).where(eq(vendors.id, id));
+    return true;
+  }
+
+  // Vendor Assignments
+  async getVendorAssignments(vendorId: string): Promise<VendorAssignment[]> {
+    return db.select().from(vendorAssignments).where(eq(vendorAssignments.vendorId, vendorId));
+  }
+
+  async createVendorAssignment(assignment: InsertVendorAssignment): Promise<VendorAssignment> {
+    const [created] = await db.insert(vendorAssignments).values(assignment).returning();
+    return created;
+  }
+
+  async updateVendorAssignment(id: string, assignment: Partial<InsertVendorAssignment>): Promise<VendorAssignment | undefined> {
+    const [updated] = await db.update(vendorAssignments).set(assignment).where(eq(vendorAssignments.id, id)).returning();
+    return updated;
+  }
+
+  async deleteVendorAssignment(id: string): Promise<boolean> {
+    await db.delete(vendorAssignments).where(eq(vendorAssignments.id, id));
+    return true;
+  }
+
+  // Commission Rules
+  async getCommissionRules(tenantId?: string, vendorId?: string): Promise<CommissionRule[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(commissionRules.tenantId, tenantId));
+    if (vendorId) conditions.push(eq(commissionRules.vendorId, vendorId));
+    if (conditions.length > 0) {
+      return db.select().from(commissionRules).where(and(...conditions));
+    }
+    return db.select().from(commissionRules);
+  }
+
+  async createCommissionRule(rule: InsertCommissionRule): Promise<CommissionRule> {
+    const [created] = await db.insert(commissionRules).values(rule).returning();
+    return created;
+  }
+
+  async updateCommissionRule(id: string, rule: Partial<InsertCommissionRule>): Promise<CommissionRule | undefined> {
+    const [updated] = await db.update(commissionRules).set(rule).where(eq(commissionRules.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCommissionRule(id: string): Promise<boolean> {
+    await db.delete(commissionRules).where(eq(commissionRules.id, id));
+    return true;
+  }
+
+  // Commissions
+  async getCommissions(vendorId?: string, status?: string): Promise<Commission[]> {
+    const conditions = [];
+    if (vendorId) conditions.push(eq(commissions.vendorId, vendorId));
+    if (status) conditions.push(eq(commissions.status, status));
+    if (conditions.length > 0) {
+      return db.select().from(commissions).where(and(...conditions)).orderBy(desc(commissions.createdAt));
+    }
+    return db.select().from(commissions).orderBy(desc(commissions.createdAt));
+  }
+
+  async createCommission(commission: InsertCommission): Promise<Commission> {
+    const [created] = await db.insert(commissions).values(commission).returning();
+    return created;
+  }
+
+  async updateCommission(id: string, commission: Partial<InsertCommission>): Promise<Commission | undefined> {
+    const [updated] = await db.update(commissions).set(commission).where(eq(commissions.id, id)).returning();
+    return updated;
+  }
+
+  // Vendor Objectives
+  async getVendorObjectives(vendorId?: string, status?: string): Promise<VendorObjective[]> {
+    const conditions = [];
+    if (vendorId) conditions.push(eq(vendorObjectives.vendorId, vendorId));
+    if (status) conditions.push(eq(vendorObjectives.status, status));
+    if (conditions.length > 0) {
+      return db.select().from(vendorObjectives).where(and(...conditions)).orderBy(desc(vendorObjectives.createdAt));
+    }
+    return db.select().from(vendorObjectives).orderBy(desc(vendorObjectives.createdAt));
+  }
+
+  async createVendorObjective(objective: InsertVendorObjective): Promise<VendorObjective> {
+    const [created] = await db.insert(vendorObjectives).values(objective).returning();
+    return created;
+  }
+
+  async updateVendorObjective(id: string, objective: Partial<InsertVendorObjective>): Promise<VendorObjective | undefined> {
+    const [updated] = await db.update(vendorObjectives).set(objective).where(eq(vendorObjectives.id, id)).returning();
+    return updated;
+  }
+
+  // Badges
+  async getBadges(tenantId?: string): Promise<Badge[]> {
+    if (tenantId) {
+      return db.select().from(badges).where(eq(badges.tenantId, tenantId)).orderBy(badges.name);
+    }
+    return db.select().from(badges).orderBy(badges.name);
+  }
+
+  async createBadge(badge: InsertBadge): Promise<Badge> {
+    const [created] = await db.insert(badges).values(badge).returning();
+    return created;
+  }
+
+  async updateBadge(id: string, badge: Partial<InsertBadge>): Promise<Badge | undefined> {
+    const [updated] = await db.update(badges).set(badge).where(eq(badges.id, id)).returning();
+    return updated;
+  }
+
+  // Vendor Badges
+  async getVendorBadges(vendorId: string): Promise<VendorBadge[]> {
+    return db.select().from(vendorBadges).where(eq(vendorBadges.vendorId, vendorId)).orderBy(desc(vendorBadges.earnedAt));
+  }
+
+  async awardBadge(vendorBadge: InsertVendorBadge): Promise<VendorBadge> {
+    const [created] = await db.insert(vendorBadges).values(vendorBadge).returning();
+    return created;
+  }
+
+  // Challenges
+  async getChallenges(tenantId?: string, status?: string): Promise<Challenge[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(challenges.tenantId, tenantId));
+    if (status) conditions.push(eq(challenges.status, status));
+    if (conditions.length > 0) {
+      return db.select().from(challenges).where(and(...conditions)).orderBy(desc(challenges.startDate));
+    }
+    return db.select().from(challenges).orderBy(desc(challenges.startDate));
+  }
+
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    const [created] = await db.insert(challenges).values(challenge).returning();
+    return created;
+  }
+
+  async updateChallenge(id: string, challenge: Partial<InsertChallenge>): Promise<Challenge | undefined> {
+    const [updated] = await db.update(challenges).set(challenge).where(eq(challenges.id, id)).returning();
+    return updated;
+  }
+
+  // Challenge Participants
+  async getChallengeParticipants(challengeId: string): Promise<ChallengeParticipant[]> {
+    return db.select().from(challengeParticipants).where(eq(challengeParticipants.challengeId, challengeId)).orderBy(challengeParticipants.rank);
+  }
+
+  async joinChallenge(participant: InsertChallengeParticipant): Promise<ChallengeParticipant> {
+    const [created] = await db.insert(challengeParticipants).values(participant).returning();
+    return created;
+  }
+
+  async updateChallengeParticipant(id: string, participant: Partial<InsertChallengeParticipant>): Promise<ChallengeParticipant | undefined> {
+    const [updated] = await db.update(challengeParticipants).set(participant).where(eq(challengeParticipants.id, id)).returning();
+    return updated;
+  }
+
+  // Vendor Performance
+  async getVendorPerformance(vendorId: string, periodType?: string): Promise<VendorPerformance[]> {
+    const conditions = [eq(vendorPerformance.vendorId, vendorId)];
+    if (periodType) conditions.push(eq(vendorPerformance.periodType, periodType));
+    return db.select().from(vendorPerformance).where(and(...conditions)).orderBy(desc(vendorPerformance.periodDate));
+  }
+
+  async createVendorPerformance(performance: InsertVendorPerformance): Promise<VendorPerformance> {
+    const [created] = await db.insert(vendorPerformance).values(performance).returning();
+    return created;
+  }
+
+  // Vendor Leaderboard
+  async getVendorLeaderboard(tenantId: string, periodType: string): Promise<Array<{vendor: Vendor; performance: VendorPerformance | null; rank: number}>> {
+    const vendorList = await db.select().from(vendors).where(and(eq(vendors.tenantId, tenantId), eq(vendors.isActive, true)));
+    
+    const result: Array<{vendor: Vendor; performance: VendorPerformance | null; rank: number}> = [];
+    
+    for (const vendor of vendorList) {
+      const [perf] = await db.select().from(vendorPerformance)
+        .where(and(eq(vendorPerformance.vendorId, vendor.id), eq(vendorPerformance.periodType, periodType)))
+        .orderBy(desc(vendorPerformance.periodDate))
+        .limit(1);
+      result.push({ vendor, performance: perf || null, rank: 0 });
+    }
+    
+    result.sort((a, b) => {
+      const aValue = parseFloat(a.performance?.totalSales || "0");
+      const bValue = parseFloat(b.performance?.totalSales || "0");
+      return bValue - aValue;
+    });
+    
+    result.forEach((item, index) => { item.rank = index + 1; });
+    
+    return result;
   }
 }
 
