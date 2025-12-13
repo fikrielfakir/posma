@@ -663,6 +663,328 @@ export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback)
 export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
 export type CustomerFeedback = typeof customerFeedback.$inferSelect;
 
+// ============== VENDORS/SELLERS ==============
+export const vendors = pgTable("vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  userId: varchar("user_id").references(() => users.id),
+  code: text("code").notNull(),
+  fullName: text("full_name").notNull(),
+  photo: text("photo"),
+  cin: text("cin"),
+  cnss: text("cnss"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  city: text("city"),
+  hireDate: timestamp("hire_date"),
+  contractType: text("contract_type"), // cdi, cdd, interim, freelance
+  contractDocument: text("contract_document"),
+  specializations: jsonb("specializations").$type<string[]>().default([]),
+  skills: jsonb("skills").$type<string[]>().default([]),
+  level: text("level").default("bronze"), // bronze, silver, gold, platinum, diamond
+  totalXp: integer("total_xp").default(0),
+  baseCommissionRate: decimal("base_commission_rate", { precision: 5, scale: 2 }).default("2"),
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+
+// Vendor warehouse/store assignments
+export const vendorAssignments = pgTable("vendor_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  isPrimary: boolean("is_primary").default(false),
+  startDate: timestamp("start_date").defaultNow(),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertVendorAssignmentSchema = createInsertSchema(vendorAssignments).omit({ id: true });
+export type InsertVendorAssignment = z.infer<typeof insertVendorAssignmentSchema>;
+export type VendorAssignment = typeof vendorAssignments.$inferSelect;
+
+// Commission rules per category
+export const commissionRules = pgTable("commission_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  categoryId: varchar("category_id").references(() => productCategories.id),
+  ruleType: text("rule_type").notNull(), // fixed, percentage, tiered
+  fixedAmount: decimal("fixed_amount", { precision: 10, scale: 2 }),
+  percentageRate: decimal("percentage_rate", { precision: 5, scale: 2 }),
+  tiers: jsonb("tiers").$type<Array<{min: number; max: number; rate: number}>>(),
+  basedOn: text("based_on").default("revenue"), // revenue, margin, quantity
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertCommissionRuleSchema = createInsertSchema(commissionRules).omit({ id: true });
+export type InsertCommissionRule = z.infer<typeof insertCommissionRuleSchema>;
+export type CommissionRule = typeof commissionRules.$inferSelect;
+
+// Commission records
+export const commissions = pgTable("commissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  saleId: varchar("sale_id").references(() => sales.id),
+  ruleId: varchar("rule_id").references(() => commissionRules.id),
+  saleAmount: decimal("sale_amount", { precision: 12, scale: 2 }).notNull(),
+  commissionAmount: decimal("commission_amount", { precision: 12, scale: 2 }).notNull(),
+  bonusAmount: decimal("bonus_amount", { precision: 12, scale: 2 }).default("0"),
+  malusAmount: decimal("malus_amount", { precision: 12, scale: 2 }).default("0"),
+  netAmount: decimal("net_amount", { precision: 12, scale: 2 }).notNull(),
+  status: text("status").default("pending"), // pending, confirmed, paid, cancelled
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCommissionSchema = createInsertSchema(commissions).omit({ id: true, createdAt: true });
+export type InsertCommission = z.infer<typeof insertCommissionSchema>;
+export type Commission = typeof commissions.$inferSelect;
+
+// Sales objectives
+export const vendorObjectives = pgTable("vendor_objectives", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  name: text("name").notNull(),
+  objectiveType: text("objective_type").notNull(), // revenue, margin, quantity, transactions
+  targetValue: decimal("target_value", { precision: 15, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 15, scale: 2 }).default("0"),
+  periodType: text("period_type").notNull(), // daily, weekly, monthly, quarterly, yearly
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  categoryId: varchar("category_id").references(() => productCategories.id),
+  bonusOnCompletion: decimal("bonus_on_completion", { precision: 10, scale: 2 }),
+  tiers: jsonb("tiers").$type<Array<{percent: number; bonus: number}>>(),
+  status: text("status").default("active"), // active, completed, failed, cancelled
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorObjectiveSchema = createInsertSchema(vendorObjectives).omit({ id: true, createdAt: true });
+export type InsertVendorObjective = z.infer<typeof insertVendorObjectiveSchema>;
+export type VendorObjective = typeof vendorObjectives.$inferSelect;
+
+// Gamification badges
+export const badges = pgTable("badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  nameFr: text("name_fr"),
+  description: text("description"),
+  icon: text("icon"),
+  category: text("category"), // sales, customer, performance, special
+  xpReward: integer("xp_reward").default(0),
+  criteria: jsonb("criteria").$type<Record<string, any>>(),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({ id: true });
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+// Vendor earned badges
+export const vendorBadges = pgTable("vendor_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  badgeId: varchar("badge_id").references(() => badges.id),
+  earnedAt: timestamp("earned_at").defaultNow(),
+  context: jsonb("context").$type<Record<string, any>>(),
+});
+
+export const insertVendorBadgeSchema = createInsertSchema(vendorBadges).omit({ id: true });
+export type InsertVendorBadge = z.infer<typeof insertVendorBadgeSchema>;
+export type VendorBadge = typeof vendorBadges.$inferSelect;
+
+// Challenges
+export const challenges = pgTable("challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  challengeType: text("challenge_type").notNull(), // individual, team
+  targetType: text("target_type").notNull(), // revenue, quantity, customers
+  targetValue: decimal("target_value", { precision: 15, scale: 2 }).notNull(),
+  xpReward: integer("xp_reward").default(0),
+  bonusReward: decimal("bonus_reward", { precision: 10, scale: 2 }),
+  badgeId: varchar("badge_id").references(() => badges.id),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  status: text("status").default("upcoming"), // upcoming, active, completed, cancelled
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertChallengeSchema = createInsertSchema(challenges).omit({ id: true });
+export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+export type Challenge = typeof challenges.$inferSelect;
+
+// Challenge participants
+export const challengeParticipants = pgTable("challenge_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  challengeId: varchar("challenge_id").references(() => challenges.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  currentValue: decimal("current_value", { precision: 15, scale: 2 }).default("0"),
+  rank: integer("rank"),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  rewardClaimed: boolean("reward_claimed").default(false),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+export const insertChallengeParticipantSchema = createInsertSchema(challengeParticipants).omit({ id: true });
+export type InsertChallengeParticipant = z.infer<typeof insertChallengeParticipantSchema>;
+export type ChallengeParticipant = typeof challengeParticipants.$inferSelect;
+
+// Vendor performance stats
+export const vendorPerformance = pgTable("vendor_performance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  periodType: text("period_type").notNull(), // daily, weekly, monthly
+  periodDate: timestamp("period_date").notNull(),
+  totalSales: decimal("total_sales", { precision: 15, scale: 2 }).default("0"),
+  totalTransactions: integer("total_transactions").default(0),
+  totalCustomers: integer("total_customers").default(0),
+  newCustomers: integer("new_customers").default(0),
+  avgBasket: decimal("avg_basket", { precision: 12, scale: 2 }).default("0"),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).default("0"),
+  returnsCount: integer("returns_count").default(0),
+  returnsValue: decimal("returns_value", { precision: 12, scale: 2 }).default("0"),
+  totalMargin: decimal("total_margin", { precision: 15, scale: 2 }).default("0"),
+  xpEarned: integer("xp_earned").default(0),
+  commissionEarned: decimal("commission_earned", { precision: 12, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorPerformanceSchema = createInsertSchema(vendorPerformance).omit({ id: true, createdAt: true });
+export type InsertVendorPerformance = z.infer<typeof insertVendorPerformanceSchema>;
+export type VendorPerformance = typeof vendorPerformance.$inferSelect;
+
+// Client-vendor assignments
+export const clientVendorAssignments = pgTable("client_vendor_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").references(() => customers.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  matchScore: decimal("match_score", { precision: 5, scale: 2 }),
+  reason: text("reason"),
+  totalTransactions: integer("total_transactions").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 15, scale: 2 }).default("0"),
+  lastInteraction: timestamp("last_interaction"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertClientVendorAssignmentSchema = createInsertSchema(clientVendorAssignments).omit({ id: true });
+export type InsertClientVendorAssignment = z.infer<typeof insertClientVendorAssignmentSchema>;
+export type ClientVendorAssignment = typeof clientVendorAssignments.$inferSelect;
+
+// Training courses
+export const trainingCourses = pgTable("training_courses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category"), // product, sales, customer_service, technical
+  difficulty: text("difficulty").default("beginner"), // beginner, intermediate, advanced
+  durationMinutes: integer("duration_minutes"),
+  xpReward: integer("xp_reward").default(0),
+  badgeId: varchar("badge_id").references(() => badges.id),
+  content: jsonb("content").$type<Array<{type: string; title: string; data: any}>>(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTrainingCourseSchema = createInsertSchema(trainingCourses).omit({ id: true, createdAt: true });
+export type InsertTrainingCourse = z.infer<typeof insertTrainingCourseSchema>;
+export type TrainingCourse = typeof trainingCourses.$inferSelect;
+
+// Vendor training progress
+export const vendorTraining = pgTable("vendor_training", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  courseId: varchar("course_id").references(() => trainingCourses.id),
+  status: text("status").default("not_started"), // not_started, in_progress, completed
+  progress: integer("progress").default(0),
+  score: integer("score"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  lastAccessedAt: timestamp("last_accessed_at"),
+});
+
+export const insertVendorTrainingSchema = createInsertSchema(vendorTraining).omit({ id: true });
+export type InsertVendorTraining = z.infer<typeof insertVendorTrainingSchema>;
+export type VendorTraining = typeof vendorTraining.$inferSelect;
+
+// Vendor evaluations
+export const vendorEvaluations = pgTable("vendor_evaluations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  evaluatorId: varchar("evaluator_id").references(() => users.id),
+  evaluationType: text("evaluation_type").notNull(), // manager, peer, self, customer
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  scores: jsonb("scores").$type<Record<string, number>>(),
+  overallScore: decimal("overall_score", { precision: 3, scale: 1 }),
+  strengths: text("strengths"),
+  improvements: text("improvements"),
+  actionPlan: text("action_plan"),
+  status: text("status").default("draft"), // draft, submitted, reviewed
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorEvaluationSchema = createInsertSchema(vendorEvaluations).omit({ id: true, createdAt: true });
+export type InsertVendorEvaluation = z.infer<typeof insertVendorEvaluationSchema>;
+export type VendorEvaluation = typeof vendorEvaluations.$inferSelect;
+
+// AI coaching tips
+export const vendorCoachingTips = pgTable("vendor_coaching_tips", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  tipType: text("tip_type").notNull(), // improvement, warning, congratulation, suggestion
+  category: text("category"), // sales, customer, product, time_management
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  priority: text("priority").default("medium"), // low, medium, high
+  isRead: boolean("is_read").default(false),
+  isDismissed: boolean("is_dismissed").default(false),
+  actionTaken: boolean("action_taken").default(false),
+  impact: jsonb("impact").$type<{metric: string; expectedChange: number}>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorCoachingTipSchema = createInsertSchema(vendorCoachingTips).omit({ id: true, createdAt: true });
+export type InsertVendorCoachingTip = z.infer<typeof insertVendorCoachingTipSchema>;
+export type VendorCoachingTip = typeof vendorCoachingTips.$inferSelect;
+
+// Vendor performance predictions
+export const vendorPredictions = pgTable("vendor_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  predictionType: text("prediction_type").notNull(), // monthly_revenue, churn_risk, objective_completion
+  predictionDate: timestamp("prediction_date").notNull(),
+  horizonDays: integer("horizon_days").default(30),
+  predictedValue: decimal("predicted_value", { precision: 15, scale: 2 }),
+  confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }),
+  features: jsonb("features").$type<Record<string, any>>(),
+  recommendation: text("recommendation"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorPredictionSchema = createInsertSchema(vendorPredictions).omit({ id: true, createdAt: true });
+export type InsertVendorPrediction = z.infer<typeof insertVendorPredictionSchema>;
+export type VendorPrediction = typeof vendorPredictions.$inferSelect;
+
 // ============== RELATIONS ==============
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
