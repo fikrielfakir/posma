@@ -103,6 +103,13 @@ export default function Inventory() {
 
   const activeSession = sessions.find(s => s.id === selectedSession);
 
+  const filteredCounts = counts.filter((count) => {
+    if (!searchQuery) return true;
+    const productInfo = getProductInfo(count.productId);
+    const query = searchQuery.toLowerCase();
+    return productInfo.sku.toLowerCase().includes(query) || productInfo.name.toLowerCase().includes(query);
+  });
+
   const countedItems = counts.filter(c => c.status === "counted" || c.status === "verified").length;
   const totalItems = counts.length;
   const varianceItems = counts.filter(c => c.variance && parseFloat(c.variance) !== 0).length;
@@ -282,7 +289,7 @@ export default function Inventory() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {counts.map((count) => {
+                          {filteredCounts.map((count) => {
                             const productInfo = getProductInfo(count.productId);
                             const variance = count.variance ? parseFloat(count.variance) : null;
                             return (
