@@ -15,6 +15,8 @@ import {
   Upload,
   Download,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,8 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const { data: products = [], isLoading, error } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -137,6 +141,10 @@ export default function Products() {
       (product.barcode && product.barcode.includes(searchQuery));
     return matchesSearch;
   });
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
   const getStockBadge = (product: Product) => {
     return <Badge variant="outline" size="sm">{product.isActive ? t("active") : t("inactive")}</Badge>;
@@ -437,7 +445,7 @@ export default function Products() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map((product) => (
+                  {paginatedProducts.map((product) => (
                     <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
                       <TableCell className="font-mono text-sm">{product.sku}</TableCell>
                       <TableCell>
@@ -493,7 +501,7 @@ export default function Products() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                 <Card key={product.id} className="hover-elevate" data-testid={`card-product-${product.id}`}>
                   <CardContent className="p-4">
                     <div className="relative mb-3 flex aspect-square items-center justify-center rounded-lg bg-muted">
@@ -513,6 +521,34 @@ export default function Products() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t mt-4">
+              <p className="text-sm text-muted-foreground">
+                Affichage {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredProducts.length)} sur {filteredProducts.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">Page {currentPage} / {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

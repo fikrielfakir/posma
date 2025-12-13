@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Mail, Building, Loader2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Mail, Building, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,8 @@ export default function Suppliers() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const { data: suppliers = [], isLoading, error } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -83,6 +85,10 @@ export default function Suppliers() {
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedSuppliers = filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
 
   if (isLoading) {
     return (
@@ -289,7 +295,7 @@ export default function Suppliers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSuppliers.map((supplier) => (
+                  {paginatedSuppliers.map((supplier) => (
                     <TableRow key={supplier.id} data-testid={`row-supplier-${supplier.id}`}>
                       <TableCell className="font-mono text-sm">{supplier.code}</TableCell>
                       <TableCell>
@@ -344,6 +350,34 @@ export default function Suppliers() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t mt-4">
+              <p className="text-sm text-muted-foreground">
+                Affichage {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredSuppliers.length)} sur {filteredSuppliers.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">Page {currentPage} / {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
