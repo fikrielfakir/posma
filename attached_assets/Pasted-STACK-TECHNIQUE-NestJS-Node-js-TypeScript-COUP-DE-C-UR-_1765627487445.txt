@@ -1,0 +1,113 @@
+STACK TECHNIQUE:
+NestJS (Node.js + TypeScript) ⭐ COUP DE CŒUR
+
+
+CONFIGURATION INITIALE:
+1. Multi-tenancy avec base de données séparée par entreprise
+2. Support multilingue (Français, Arabe classique, Darija marocaine)
+3. Multi-devises (MAD, EUR, USD) avec taux de change temps réel
+4. Fuseaux horaires Maroc (GMT+1, pas de changement été/hiver depuis 2018)
+5. Conformité fiscale marocaine:
+   - TVA 20% (taux normal), 14%, 10%, 7%, 0%
+   - Numérotation fiscale (ICE, IF, TP, CNSS)
+   - Format factures selon réglementation marocaine
+   - Intégration API SIMPL (Système d'Information de la Marocanisation des Paiements Largement)
+6. Support paiement mobile: CashPlus, Wafacash, Orange Money, Maroc Telecommerce
+7. Intégration SMS Gateway Maroc: Macenta, Ultramob, Itexto
+8. Jours fériés et événements marocains (Aïd, Ramadan, fêtes nationales)
+
+RÔLES & PERMISSIONS:
+- Super Admin: accès total système
+- Directeur Général: vue consolidée, rapports exécutifs
+- Directeur Commercial: gestion vendeurs, objectifs, commissions
+- Manager Point de Vente: gestion locale, stock, équipe
+- Responsable Stock: achats, inventaires, transferts
+- Vendeur: ventes, consultation stock, dashboard personnel
+- Caissier: encaissements, ouverture/clôture caisse
+- Magasinier: réception, rangement, inventaire physique
+- Comptable: factures, paiements, rapports financiers
+- Auditeur: lecture seule, export données, logs
+
+═══════════════════════════════════════════════════════════════════════════════
+📦 PARTIE 2: GESTION COMPLÈTE DU STOCK
+═══════════════════════════════════════════════════════════════════════════════
+
+CATALOGUE PRODUITS:
+- Hiérarchie: Famille > Catégorie > Sous-catégorie > Produit
+- Gestion multi-attributs: couleur, taille, goût, volume, parfum
+- Codes multiples: code interne, EAN13, SKU, code fournisseur
+- Unités: pièce, kg, g, L, mL, carton, palette, m, m², lot
+- Conversion automatique entre unités
+- Images multiples avec recadrage automatique (IA)
+- Génération descriptions SEO multilingues (GPT-4)
+- Classification automatique ABC/XYZ avec ML
+- Produits composés/kits avec décomposition automatique
+- Traçabilité: numéro lot, date fabrication, DLC, DLUO
+- Certifications: halal, bio, origine, qualité
+- Fiche technique enrichie: composition, allergènes, conseils utilisation
+
+GESTION ACHATS INTELLIGENTE:
+1. Prédiction de demande avec LSTM (séries temporelles):
+   - Analyse 24+ mois d'historique
+   - Prise en compte saisonnalité, Ramadan, fêtes
+   - Facteurs externes: météo, économie, inflation Maroc
+   - Prédictions à 7, 14, 30, 60, 90 jours
+   - Intervalles de confiance 80% et 95%
+
+2. Optimisation automatique des commandes:
+   - Algorithme de programmation linéaire
+   - Contraintes: budget, espace, MOQ, délais
+   - Suggestions commandes par IA avec justification
+   - Simulation "What-if" pour différents scénarios
+   - Prise en compte remises sur volume
+   - Calcul automatique du point de commande optimal
+
+3. Workflow commandes fournisseurs:
+   - Demande d'achat → Approbation → Bon de commande
+   - Validation multi-niveaux selon montant
+   - Envoi auto par email avec PDF
+   - Suivi livraison avec tracking
+   - Réception partielle/totale avec scan code-barres
+   - Contrôle qualité avec photos (Computer Vision)
+   - Gestion litiges et retours fournisseurs
+   - Mise en stock automatique après validation
+
+MOUVEMENTS DE STOCK:
+- Entrées: achats, retours clients, ajustements, dons reçus
+- Sorties: ventes, retours fournisseurs, pertes, casses, échantillons, dons
+- Transferts inter-sites avec workflow d'approbation
+- Ajustements d'inventaire avec justification obligatoire
+- Réservations de stock (commandes en attente)
+- Traçabilité complète: qui, quand, pourquoi, combien
+- Photos avant/après pour ajustements importants
+
+INVENTAIRE INTELLIGENT:
+- Inventaire tournant par zone/catégorie
+- Comptage avec application mobile + scan
+- Double comptage automatique si écart > seuil
+- Computer Vision: comptage automatique par caméra/drone
+- Détection anomalies avec Isolation Forest
+- Rapprochement stock théorique vs physique
+- Génération automatique écritures d'ajustement
+- Planning intelligent des inventaires par IA
+
+ALERTES & NOTIFICATIONS:
+- Stock minimum atteint (seuil personnalisé)
+- Stock maximum dépassé (surstockage)
+- Rupture de stock imminente (prédiction IA)
+- Produits proches expiration (30, 15, 7, 3 jours)
+- Produits à rotation lente (> 90 jours sans mouvement)
+- Écarts d'inventaire suspects (détection fraude)
+- Température anormale (produits sensibles avec IoT)
+- Commandes fournisseurs en retard
+- Notifications: in-app, email, SMS, push mobile, Slack
+
+VALORISATION & ANALYSES:
+- Méthodes: FIFO, LIFO, Coût Moyen Pondéré
+- Valorisation en temps réel par méthode
+- Provision pour dépréciation automatique
+- Analyse de rotation: taux, durée moyenne stockage
+- Identification fast/slow movers avec ML
+- Coût de possession du stock
+- Dead stock detection (> 180 jours)
+- Simulation impact changement de méthode
