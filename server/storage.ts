@@ -1,5 +1,5 @@
-import { eq, desc, and, sql, ilike, or } from "drizzle-orm";
-import { db } from "./db";
+import { eq, desc, and, sql, ilike, or, gte } from "drizzle-orm";
+import { db, pool } from "./db";
 import {
   tenants, insertTenantSchema, type Tenant, type InsertTenant,
   roles, type Role, type InsertRole,
@@ -103,6 +103,7 @@ export interface IStorage {
   getStockMovements(tenantId?: string, warehouseId?: string, limit?: number): Promise<StockMovement[]>;
   getStockMovement(id: string): Promise<StockMovement | undefined>;
   createStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
+  createStockMovementWithStockUpdate(movement: InsertStockMovement): Promise<StockMovement>;
 
   // Purchase Orders
   getPurchaseOrders(tenantId?: string, status?: string): Promise<PurchaseOrder[]>;
@@ -521,6 +522,82 @@ export class DatabaseStorage implements IStorage {
   async createStockMovement(movement: InsertStockMovement): Promise<StockMovement> {
     const [created] = await db.insert(stockMovements).values(movement).returning();
     return created;
+  }
+
+  async createStockMovementWithStockUpdate(movement: InsertStockMovement): Promise<StockMovement> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      const movementResult = await client.query(
+        `INSERT INTO stock_movements (tenant_id, warehouse_id, product_id, type, quantity, unit_cost, reference, notes, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [movement.tenantId, movement.warehouseId, movement.productId, movement.type, 
+         movement.quantity, movement.unitCost || null, movement.reference || null, 
+         movement.notes || null, movement.userId || null]
+      );
+      const createdMovement = movementResult.rows[0];
+      
+      if (movement.warehouseId && movement.productId) {
+        const stockResult = await client.query(
+          `SELECT * FROM stock WHERE warehouse_id = $1 AND product_id = $2`,
+          [movement.warehouseId, movement.productId]
+        );
+        
+        const currentQty = stockResult.rows.length > 0 ? parseFloat(stockResult.rows[0].quantity || "0") : 0;
+        const currentAvgCost = stockResult.rows.length > 0 ? parseFloat(stockResult.rows[0].average_cost || "0") : 0;
+        const movementQty = parseFloat(movement.quantity);
+        const movementCost = parseFloat(movement.unitCost || "0");
+        
+        let newQty = currentQty;
+        let newAvgCost = currentAvgCost;
+        
+        if (movement.type === "entry" || movement.type === "transfer_in" || movement.type === "return") {
+          newQty = currentQty + movementQty;
+          if (movementCost > 0 && newQty > 0) {
+            newAvgCost = ((currentQty * currentAvgCost) + (movementQty * movementCost)) / newQty;
+          }
+        } else if (movement.type === "exit" || movement.type === "transfer_out") {
+          newQty = currentQty - movementQty;
+        } else if (movement.type === "adjustment") {
+          newQty = movementQty;
+        }
+        
+        if (stockResult.rows.length > 0) {
+          await client.query(
+            `UPDATE stock SET quantity = $1, average_cost = $2, last_movement_date = NOW() WHERE id = $3`,
+            [newQty.toString(), newAvgCost.toString(), stockResult.rows[0].id]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO stock (tenant_id, warehouse_id, product_id, quantity, average_cost, last_movement_date)
+             VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [movement.tenantId, movement.warehouseId, movement.productId, newQty.toString(), movementCost.toString()]
+          );
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      return {
+        id: createdMovement.id,
+        tenantId: createdMovement.tenant_id,
+        warehouseId: createdMovement.warehouse_id,
+        productId: createdMovement.product_id,
+        type: createdMovement.type,
+        quantity: createdMovement.quantity,
+        unitCost: createdMovement.unit_cost,
+        reference: createdMovement.reference,
+        notes: createdMovement.notes,
+        userId: createdMovement.user_id,
+        createdAt: createdMovement.created_at,
+      } as StockMovement;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   // Purchase Orders

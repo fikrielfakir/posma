@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Plus, Search, Eye, FileText, Truck, Check, X, ShoppingCart } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Eye, FileText, Truck, Check, X, ShoppingCart, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +13,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/contexts/AppContext";
-import { formatCurrency, formatDate, formatNumber } from "@/lib/i18n";
+import { formatCurrency, formatDate } from "@/lib/i18n";
+import type { PurchaseOrder, Supplier, Warehouse } from "@shared/schema";
 
-const mockPurchases = [
-  { id: "1", orderNumber: "ACH-2024-0089", supplier: "Coopérative Atlas", warehouse: "Casablanca Central", status: "received", orderDate: new Date("2024-12-10"), expectedDate: new Date("2024-12-13"), total: 45200, currency: "MAD", itemsCount: 5 },
-  { id: "2", orderNumber: "ACH-2024-0088", supplier: "Ferme Bio Agadir", warehouse: "Casablanca Central", status: "ordered", orderDate: new Date("2024-12-08"), expectedDate: new Date("2024-12-15"), total: 23500, currency: "MAD", itemsCount: 3 },
-  { id: "3", orderNumber: "ACH-2024-0087", supplier: "Artisanat Marrakech", warehouse: "Marrakech Sud", status: "partial_received", orderDate: new Date("2024-12-05"), expectedDate: new Date("2024-12-12"), total: 18900, currency: "MAD", itemsCount: 8 },
-  { id: "4", orderNumber: "ACH-2024-0086", supplier: "Huiles du Souss", warehouse: "Rabat Nord", status: "pending_approval", orderDate: new Date("2024-12-12"), expectedDate: new Date("2024-12-20"), total: 67800, currency: "MAD", itemsCount: 4 },
-  { id: "5", orderNumber: "ACH-2024-0085", supplier: "Coopérative Atlas", warehouse: "Casablanca Central", status: "draft", orderDate: new Date("2024-12-13"), expectedDate: null, total: 12400, currency: "MAD", itemsCount: 2 },
-];
+interface PurchaseOrderWithDetails extends PurchaseOrder {
+  supplier?: Supplier;
+  warehouse?: Warehouse;
+}
 
 const statusConfig: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; icon: any }> = {
   draft: { variant: "outline", icon: FileText },
@@ -32,22 +33,102 @@ const statusConfig: Record<string, { variant: "default" | "secondary" | "outline
 
 export default function Purchases() {
   const { t, currency, language } = useApp();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    supplierId: "",
+    warehouseId: "",
+    orderDate: "",
+    expectedDate: "",
+    notes: "",
+  });
 
-  const filteredPurchases = mockPurchases.filter((p) => {
-    const matchesSearch = p.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) || p.supplier.toLowerCase().includes(searchQuery.toLowerCase());
+  const { data: purchaseOrders = [], isLoading } = useQuery<PurchaseOrder[]>({
+    queryKey: ["/api/purchase-orders"],
+  });
+
+  const { data: suppliers = [] } = useQuery<Supplier[]>({
+    queryKey: ["/api/suppliers"],
+  });
+
+  const { data: warehouses = [] } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: {
+      supplierId: string;
+      warehouseId: string;
+      orderDate?: string;
+      expectedDate?: string;
+      notes?: string;
+    }) => {
+      const orderNumber = `ACH-${new Date().getFullYear()}-${String(purchaseOrders.length + 1).padStart(4, '0')}`;
+      const res = await apiRequest("POST", "/api/purchase-orders", {
+        ...data,
+        orderNumber,
+        status: "draft",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
+      toast({ title: t("success"), description: "Commande créée" });
+      setIsAddDialogOpen(false);
+      setFormData({ supplierId: "", warehouseId: "", orderDate: "", expectedDate: "", notes: "" });
+    },
+    onError: () => {
+      toast({ title: t("error"), description: "Erreur lors de la création", variant: "destructive" });
+    },
+  });
+
+  const handleSave = () => {
+    if (!formData.supplierId || !formData.warehouseId) {
+      toast({ title: t("error"), description: "Veuillez remplir les champs obligatoires", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate({
+      supplierId: formData.supplierId,
+      warehouseId: formData.warehouseId,
+      orderDate: formData.orderDate || undefined,
+      expectedDate: formData.expectedDate || undefined,
+      notes: formData.notes || undefined,
+    });
+  };
+
+  const getSupplierById = (id: string | null | undefined) => suppliers.find(s => s.id === id);
+  const getWarehouseById = (id: string | null | undefined) => warehouses.find(w => w.id === id);
+
+  const enrichedPurchases: PurchaseOrderWithDetails[] = purchaseOrders.map(po => ({
+    ...po,
+    supplier: getSupplierById(po.supplierId),
+    warehouse: getWarehouseById(po.warehouseId),
+  }));
+
+  const filteredPurchases = enrichedPurchases.filter((p) => {
+    const matchesSearch = p.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (p.supplier?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const stats = {
-    total: mockPurchases.length,
-    pending: mockPurchases.filter(p => ["draft", "pending_approval"].includes(p.status)).length,
-    inProgress: mockPurchases.filter(p => ["ordered", "partial_received"].includes(p.status)).length,
-    completed: mockPurchases.filter(p => p.status === "received").length,
+    total: purchaseOrders.length,
+    pending: purchaseOrders.filter(p => ["draft", "pending_approval"].includes(p.status || "")).length,
+    inProgress: purchaseOrders.filter(p => ["ordered", "partial_received"].includes(p.status || "")).length,
+    completed: purchaseOrders.filter(p => p.status === "received").length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -67,18 +148,69 @@ export default function Purchases() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>{t("supplier")} *</Label><Select><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent><SelectItem value="1">Coopérative Atlas</SelectItem><SelectItem value="2">Ferme Bio Agadir</SelectItem></SelectContent></Select></div>
-                <div className="space-y-2"><Label>{t("warehouse")} *</Label><Select><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent><SelectItem value="1">Casablanca Central</SelectItem><SelectItem value="2">Rabat Nord</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2">
+                  <Label>{t("supplier")} *</Label>
+                  <Select value={formData.supplierId} onValueChange={(v) => setFormData(prev => ({ ...prev, supplierId: v }))}>
+                    <SelectTrigger data-testid="select-purchase-supplier">
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("warehouse")} *</Label>
+                  <Select value={formData.warehouseId} onValueChange={(v) => setFormData(prev => ({ ...prev, warehouseId: v }))}>
+                    <SelectTrigger data-testid="select-purchase-warehouse">
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehouses.map(w => (
+                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>{t("orderDate")}</Label><Input type="date" data-testid="input-order-date" /></div>
-                <div className="space-y-2"><Label>{t("expectedDate")}</Label><Input type="date" data-testid="input-expected-date" /></div>
+                <div className="space-y-2">
+                  <Label>{t("orderDate")}</Label>
+                  <Input 
+                    type="date" 
+                    value={formData.orderDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, orderDate: e.target.value }))}
+                    data-testid="input-order-date" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("expectedDate")}</Label>
+                  <Input 
+                    type="date" 
+                    value={formData.expectedDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, expectedDate: e.target.value }))}
+                    data-testid="input-expected-date" 
+                  />
+                </div>
               </div>
-              <div className="space-y-2"><Label>{t("notes")}</Label><Textarea placeholder="Notes de la commande" /></div>
+              <div className="space-y-2">
+                <Label>{t("notes")}</Label>
+                <Textarea 
+                  placeholder="Notes de la commande" 
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  data-testid="input-purchase-notes"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>{t("cancel")}</Button>
-              <Button>{t("save")}</Button>
+              <Button onClick={handleSave} disabled={createMutation.isPending} data-testid="button-save-purchase">
+                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t("save")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -99,7 +231,7 @@ export default function Purchases() {
               <Input type="search" placeholder={`${t("search")} commande...`} className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} data-testid="input-search-purchases" />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40"><SelectValue placeholder={t("status")} /></SelectTrigger>
+              <SelectTrigger className="w-40" data-testid="select-status-filter"><SelectValue placeholder={t("status")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("status")}</SelectItem>
                 <SelectItem value="draft">{t("draft")}</SelectItem>
@@ -127,21 +259,30 @@ export default function Purchases() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPurchases.map((po) => {
-                  const config = statusConfig[po.status];
-                  return (
-                    <TableRow key={po.id} data-testid={`row-purchase-${po.id}`}>
-                      <TableCell className="font-mono font-medium">{po.orderNumber}</TableCell>
-                      <TableCell>{po.supplier}</TableCell>
-                      <TableCell><Badge variant="outline" size="sm">{po.warehouse}</Badge></TableCell>
-                      <TableCell className="text-sm">{formatDate(po.orderDate, language)}</TableCell>
-                      <TableCell className="text-sm">{po.expectedDate ? formatDate(po.expectedDate, language) : "-"}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(po.total, currency)}</TableCell>
-                      <TableCell><Badge variant={config.variant} size="sm">{t(po.status)}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button></TableCell>
-                    </TableRow>
-                  );
-                })}
+                {filteredPurchases.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      Aucune commande trouvée
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPurchases.map((po) => {
+                    const config = statusConfig[po.status || "draft"];
+                    const total = Number(po.total) || 0;
+                    return (
+                      <TableRow key={po.id} data-testid={`row-purchase-${po.id}`}>
+                        <TableCell className="font-mono font-medium">{po.orderNumber}</TableCell>
+                        <TableCell>{po.supplier?.name || "-"}</TableCell>
+                        <TableCell><Badge variant="outline" size="sm">{po.warehouse?.name || "-"}</Badge></TableCell>
+                        <TableCell className="text-sm">{po.orderDate ? formatDate(new Date(po.orderDate), language) : "-"}</TableCell>
+                        <TableCell className="text-sm">{po.expectedDate ? formatDate(new Date(po.expectedDate), language) : "-"}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(total, currency)}</TableCell>
+                        <TableCell><Badge variant={config?.variant || "outline"} size="sm">{t(po.status || "draft")}</Badge></TableCell>
+                        <TableCell><Button variant="ghost" size="icon" data-testid={`button-view-purchase-${po.id}`}><Eye className="h-4 w-4" /></Button></TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>

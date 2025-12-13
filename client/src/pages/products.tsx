@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus,
   Search,
@@ -13,6 +14,7 @@ import {
   Barcode,
   Upload,
   Download,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,135 +55,111 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/contexts/AppContext";
 import { formatCurrency, formatNumber } from "@/lib/i18n";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Product, InsertProduct } from "@shared/schema";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertProductSchema } from "@shared/schema";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-const mockProducts = [
-  {
-    id: "1",
-    sku: "PRD-001",
-    barcode: "6111234567890",
-    name: "Huile d'olive extra vierge",
-    nameFr: "Huile d'olive extra vierge",
-    category: "Alimentaire",
-    subcategory: "Huiles",
-    unit: "L",
-    purchasePrice: 85,
-    sellingPrice: 120,
-    tvaRate: 10,
-    stock: 234,
-    minStock: 50,
-    isActive: true,
-  },
-  {
-    id: "2",
-    sku: "PRD-002",
-    barcode: "6111234567891",
-    name: "Savon noir traditionnel",
-    nameFr: "Savon noir traditionnel Beldi",
-    category: "Cosmétique",
-    subcategory: "Savons",
-    unit: "kg",
-    purchasePrice: 35,
-    sellingPrice: 55,
-    tvaRate: 20,
-    stock: 89,
-    minStock: 30,
-    isActive: true,
-  },
-  {
-    id: "3",
-    sku: "PRD-003",
-    barcode: "6111234567892",
-    name: "Argan cosmétique bio",
-    nameFr: "Huile d'Argan cosmétique bio",
-    category: "Cosmétique",
-    subcategory: "Huiles",
-    unit: "mL",
-    purchasePrice: 150,
-    sellingPrice: 220,
-    tvaRate: 20,
-    stock: 12,
-    minStock: 25,
-    isActive: true,
-  },
-  {
-    id: "4",
-    sku: "PRD-004",
-    barcode: "6111234567893",
-    name: "Miel de thym naturel",
-    nameFr: "Miel de thym des montagnes",
-    category: "Alimentaire",
-    subcategory: "Miels",
-    unit: "kg",
-    purchasePrice: 180,
-    sellingPrice: 280,
-    tvaRate: 7,
-    stock: 0,
-    minStock: 15,
-    isActive: true,
-  },
-  {
-    id: "5",
-    sku: "PRD-005",
-    barcode: "6111234567894",
-    name: "Couscous fin traditionnel",
-    nameFr: "Couscous fin roulé à la main",
-    category: "Alimentaire",
-    subcategory: "Céréales",
-    unit: "kg",
-    purchasePrice: 28,
-    sellingPrice: 45,
-    tvaRate: 0,
-    stock: 567,
-    minStock: 100,
-    isActive: true,
-  },
-  {
-    id: "6",
-    sku: "PRD-006",
-    barcode: "6111234567895",
-    name: "Tajine traditionnel",
-    nameFr: "Tajine en terre cuite",
-    category: "Artisanat",
-    subcategory: "Poterie",
-    unit: "piece",
-    purchasePrice: 65,
-    sellingPrice: 120,
-    tvaRate: 20,
-    stock: 45,
-    minStock: 20,
-    isActive: false,
-  },
-];
-
-const categories = ["Alimentaire", "Cosmétique", "Artisanat", "Textile"];
-const units = ["piece", "kg", "g", "L", "mL", "carton", "palette", "m", "m²", "lot"];
+const categories = ["Alimentaire", "Cosmetique", "Artisanat", "Textile"];
+const units = ["piece", "kg", "g", "L", "mL", "carton", "palette", "m", "m2", "lot"];
 const tvaRates = [0, 7, 10, 14, 20];
 
 export default function Products() {
   const { t, currency } = useApp();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredProducts = mockProducts.filter((product) => {
+  const { data: products = [], isLoading, error } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const form = useForm<InsertProduct>({
+    resolver: zodResolver(insertProductSchema),
+    defaultValues: {
+      sku: "",
+      name: "",
+      nameFr: "",
+      barcode: "",
+      description: "",
+      unit: "piece",
+      purchasePrice: "0",
+      sellingPrice: "0",
+      tvaRate: "20",
+      minStock: 0,
+      maxStock: 1000,
+      isActive: true,
+    },
+  });
+
+  const createProductMutation = useMutation({
+    mutationFn: async (data: InsertProduct) => {
+      const res = await apiRequest("POST", "/api/products", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setIsAddDialogOpen(false);
+      form.reset();
+      toast({ title: "Produit cree avec succes" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/products/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Produit supprime" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const onSubmit = (data: InsertProduct) => {
+    createProductMutation.mutate(data);
+  };
+
+  const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode.includes(searchQuery);
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+      (product.barcode && product.barcode.includes(searchQuery));
+    return matchesSearch;
   });
 
-  const getStockBadge = (stock: number, minStock: number) => {
-    if (stock === 0) {
-      return <Badge variant="destructive" size="sm">{t("outOfStock")}</Badge>;
-    }
-    if (stock < minStock) {
-      return <Badge variant="secondary" size="sm">{t("lowStock")}</Badge>;
-    }
-    return <Badge variant="outline" size="sm">{t("active")}</Badge>;
+  const getStockBadge = (product: Product) => {
+    return <Badge variant="outline" size="sm">{product.isActive ? t("active") : t("inactive")}</Badge>;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+        <p className="text-destructive">Erreur de chargement des produits</p>
+        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/products"] })}>
+          Reessayer
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -191,7 +169,7 @@ export default function Products() {
             {t("products")}
           </h1>
           <p className="text-muted-foreground">
-            {formatNumber(mockProducts.length)} {t("activeProducts")}
+            {formatNumber(products.length)} {t("activeProducts")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -217,98 +195,180 @@ export default function Products() {
                   Ajouter un nouveau produit au catalogue
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sku">{t("sku")} *</Label>
-                    <Input id="sku" placeholder="PRD-XXX" data-testid="input-sku" />
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="sku"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("sku")} *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="PRD-XXX" data-testid="input-sku" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="barcode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("barcode")}</FormLabel>
+                          <div className="flex gap-2">
+                            <FormControl>
+                              <Input placeholder="EAN13" data-testid="input-barcode" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <Button type="button" variant="outline" size="icon">
+                              <Barcode className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="barcode">{t("barcode")}</Label>
-                    <div className="flex gap-2">
-                      <Input id="barcode" placeholder="EAN13" data-testid="input-barcode" />
-                      <Button variant="outline" size="icon">
-                        <Barcode className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("name")} *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nom du produit" data-testid="input-name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="unit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("unit")}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || "piece"}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-unit">
+                                <SelectValue placeholder={t("unit")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {units.map((unit) => (
+                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tvaRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("tva")} %</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value?.toString() || "20"}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-tva">
+                                <SelectValue placeholder="TVA" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {tvaRates.map((rate) => (
+                                <SelectItem key={rate} value={rate.toString()}>{rate}%</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">{t("name")} *</Label>
-                  <Input id="name" placeholder="Nom du produit" data-testid="input-name" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="category">{t("category")}</Label>
-                    <Select>
-                      <SelectTrigger data-testid="select-category">
-                        <SelectValue placeholder={t("category")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="purchasePrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("purchasePrice")}</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" data-testid="input-purchase-price" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="sellingPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("sellingPrice")}</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" data-testid="input-selling-price" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">{t("unit")}</Label>
-                    <Select>
-                      <SelectTrigger data-testid="select-unit">
-                        <SelectValue placeholder={t("unit")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {units.map((unit) => (
-                          <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="minStock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("minStock")}</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0" data-testid="input-min-stock" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="maxStock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("maxStock")}</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="1000" data-testid="input-max-stock" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 1000)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="purchasePrice">{t("purchasePrice")}</Label>
-                    <Input id="purchasePrice" type="number" placeholder="0.00" data-testid="input-purchase-price" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sellingPrice">{t("sellingPrice")}</Label>
-                    <Input id="sellingPrice" type="number" placeholder="0.00" data-testid="input-selling-price" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tva">{t("tva")} %</Label>
-                    <Select>
-                      <SelectTrigger data-testid="select-tva">
-                        <SelectValue placeholder="TVA" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tvaRates.map((rate) => (
-                          <SelectItem key={rate} value={rate.toString()}>{rate}%</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="minStock">{t("minStock")}</Label>
-                    <Input id="minStock" type="number" placeholder="0" data-testid="input-min-stock" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxStock">{t("maxStock")}</Label>
-                    <Input id="maxStock" type="number" placeholder="1000" data-testid="input-max-stock" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">{t("description")}</Label>
-                  <Textarea id="description" placeholder="Description du produit" data-testid="input-description" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  {t("cancel")}
-                </Button>
-                <Button data-testid="button-save-product">{t("save")}</Button>
-              </DialogFooter>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("description")}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Description du produit" data-testid="input-description" {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      {t("cancel")}
+                    </Button>
+                    <Button type="submit" disabled={createProductMutation.isPending} data-testid="button-save-product">
+                      {createProductMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {t("save")}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
         </div>
@@ -329,17 +389,6 @@ export default function Products() {
                   data-testid="input-search-products"
                 />
               </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-40" data-testid="select-filter-category">
-                  <SelectValue placeholder={t("category")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("category")}</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Button variant="outline" size="icon" data-testid="button-filters">
                 <Filter className="h-4 w-4" />
               </Button>
@@ -365,17 +414,24 @@ export default function Products() {
           </div>
         </CardHeader>
         <CardContent>
-          {viewMode === "list" ? (
+          {filteredProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Package className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">{searchQuery ? "Aucun produit trouve" : "Aucun produit"}</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {searchQuery ? "Modifiez votre recherche" : "Commencez par ajouter votre premier produit"}
+              </p>
+            </div>
+          ) : viewMode === "list" ? (
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-24">{t("sku")}</TableHead>
                     <TableHead>{t("name")}</TableHead>
-                    <TableHead>{t("category")}</TableHead>
                     <TableHead className="text-right">{t("purchasePrice")}</TableHead>
                     <TableHead className="text-right">{t("sellingPrice")}</TableHead>
-                    <TableHead className="text-right">{t("currentStock")}</TableHead>
+                    <TableHead>{t("unit")}</TableHead>
                     <TableHead>{t("status")}</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
@@ -391,25 +447,18 @@ export default function Products() {
                           </div>
                           <div>
                             <p className="font-medium">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">{product.barcode}</p>
+                            {product.barcode && <p className="text-xs text-muted-foreground">{product.barcode}</p>}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" size="sm">{product.category}</Badge>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency(parseFloat(product.purchasePrice || "0"), currency)}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatCurrency(product.purchasePrice, currency)}
+                        {formatCurrency(parseFloat(product.sellingPrice || "0"), currency)}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(product.sellingPrice, currency)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={product.stock < product.minStock ? "text-destructive font-medium" : ""}>
-                          {formatNumber(product.stock)} {product.unit}
-                        </span>
-                      </TableCell>
-                      <TableCell>{getStockBadge(product.stock, product.minStock)}</TableCell>
+                      <TableCell>{product.unit}</TableCell>
+                      <TableCell>{getStockBadge(product)}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -420,14 +469,17 @@ export default function Products() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem>
                               <Eye className="mr-2 h-4 w-4" />
-                              Voir détails
+                              Voir details
                             </DropdownMenuItem>
                             <DropdownMenuItem>
                               <Edit className="mr-2 h-4 w-4" />
                               {t("edit")}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => deleteProductMutation.mutate(product.id)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               {t("delete")}
                             </DropdownMenuItem>
@@ -447,19 +499,15 @@ export default function Products() {
                     <div className="relative mb-3 flex aspect-square items-center justify-center rounded-lg bg-muted">
                       <Package className="h-12 w-12 text-muted-foreground" />
                       <div className="absolute right-2 top-2">
-                        {getStockBadge(product.stock, product.minStock)}
+                        {getStockBadge(product)}
                       </div>
                     </div>
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
                       <h3 className="font-medium leading-tight">{product.name}</h3>
                       <div className="flex items-center justify-between">
-                        <Badge variant="outline" size="sm">{product.category}</Badge>
-                        <span className="font-semibold">{formatCurrency(product.sellingPrice, currency)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>Stock: {formatNumber(product.stock)}</span>
-                        <span>Min: {product.minStock}</span>
+                        <span className="text-sm text-muted-foreground">{product.unit}</span>
+                        <span className="font-semibold">{formatCurrency(parseFloat(product.sellingPrice || "0"), currency)}</span>
                       </div>
                     </div>
                   </CardContent>

@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Search,
-  Filter,
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
@@ -12,6 +14,7 @@ import {
   TrendingDown,
   AlertTriangle,
   Download,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,153 +50,150 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useApp } from "@/contexts/AppContext";
 import { formatCurrency, formatNumber, formatDateTime } from "@/lib/i18n";
+import type { Stock, StockMovement, Warehouse, Product } from "@shared/schema";
 
-const mockStockData = [
-  {
-    id: "1",
-    productSku: "PRD-001",
-    productName: "Huile d'olive extra vierge",
-    warehouse: "Casablanca Central",
-    quantity: 234,
-    reservedQty: 12,
-    availableQty: 222,
-    minStock: 50,
-    maxStock: 500,
-    averageCost: 85,
-    lastMovement: new Date("2024-12-12"),
-  },
-  {
-    id: "2",
-    productSku: "PRD-002",
-    productName: "Savon noir traditionnel",
-    warehouse: "Casablanca Central",
-    quantity: 89,
-    reservedQty: 5,
-    availableQty: 84,
-    minStock: 30,
-    maxStock: 200,
-    averageCost: 35,
-    lastMovement: new Date("2024-12-11"),
-  },
-  {
-    id: "3",
-    productSku: "PRD-003",
-    productName: "Argan cosmétique bio",
-    warehouse: "Rabat Nord",
-    quantity: 12,
-    reservedQty: 0,
-    availableQty: 12,
-    minStock: 25,
-    maxStock: 100,
-    averageCost: 150,
-    lastMovement: new Date("2024-12-10"),
-  },
-  {
-    id: "4",
-    productSku: "PRD-004",
-    productName: "Miel de thym naturel",
-    warehouse: "Casablanca Central",
-    quantity: 0,
-    reservedQty: 0,
-    availableQty: 0,
-    minStock: 15,
-    maxStock: 80,
-    averageCost: 180,
-    lastMovement: new Date("2024-12-08"),
-  },
-  {
-    id: "5",
-    productSku: "PRD-005",
-    productName: "Couscous fin traditionnel",
-    warehouse: "Casablanca Central",
-    quantity: 567,
-    reservedQty: 45,
-    availableQty: 522,
-    minStock: 100,
-    maxStock: 500,
-    averageCost: 28,
-    lastMovement: new Date("2024-12-13"),
-  },
-];
+interface StockWithDetails extends Stock {
+  product?: Product;
+  warehouse?: Warehouse;
+}
 
-const mockMovements = [
-  {
-    id: "1",
-    date: new Date("2024-12-13T10:30:00"),
-    type: "entry",
-    reason: "purchase",
-    product: "Huile d'olive extra vierge",
-    warehouse: "Casablanca Central",
-    quantity: 100,
-    unitCost: 85,
-    totalCost: 8500,
-    reference: "ACH-2024-0089",
-    createdBy: "Mohamed",
-  },
-  {
-    id: "2",
-    date: new Date("2024-12-13T09:15:00"),
-    type: "exit",
-    reason: "sale",
-    product: "Savon noir traditionnel",
-    warehouse: "Casablanca Central",
-    quantity: 25,
-    unitCost: 35,
-    totalCost: 875,
-    reference: "VNT-2024-0156",
-    createdBy: "Fatima",
-  },
-  {
-    id: "3",
-    date: new Date("2024-12-12T16:45:00"),
-    type: "transfer_out",
-    reason: "transfer",
-    product: "Argan cosmétique bio",
-    warehouse: "Casablanca Central",
-    quantity: 10,
-    unitCost: 150,
-    totalCost: 1500,
-    reference: "TRF-2024-0012",
-    createdBy: "Youssef",
-  },
-  {
-    id: "4",
-    date: new Date("2024-12-12T14:20:00"),
-    type: "adjustment",
-    reason: "inventory_adjustment",
-    product: "Couscous fin traditionnel",
-    warehouse: "Casablanca Central",
-    quantity: -5,
-    unitCost: 28,
-    totalCost: 140,
-    reference: "INV-2024-0045",
-    createdBy: "Admin",
-  },
-];
+interface StockMovementWithDetails extends StockMovement {
+  product?: Product;
+  warehouse?: Warehouse;
+}
 
-const warehouses = ["Casablanca Central", "Rabat Nord", "Marrakech Sud"];
-const movementTypes = ["entry", "exit", "transfer_in", "transfer_out", "adjustment"];
 const movementReasons = ["purchase", "sale", "return_client", "return_supplier", "loss", "damage", "sample", "gift", "inventory_adjustment"];
 
-export default function Stock() {
+export default function StockPage() {
   const { t, currency, language } = useApp();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all");
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [movementType, setMovementType] = useState<"entry" | "exit" | "transfer">("entry");
+  
+  const [formData, setFormData] = useState({
+    productId: "",
+    warehouseId: "",
+    destinationWarehouseId: "",
+    quantity: "",
+    reason: "",
+    notes: "",
+  });
 
-  const filteredStock = mockStockData.filter((item) => {
+  const { data: stockData = [], isLoading: isLoadingStock } = useQuery<StockWithDetails[]>({
+    queryKey: ["/api/stock"],
+  });
+
+  const { data: movements = [], isLoading: isLoadingMovements } = useQuery<StockMovementWithDetails[]>({
+    queryKey: ["/api/stock-movements"],
+  });
+
+  const { data: warehouses = [] } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+  });
+
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const createMovementMutation = useMutation({
+    mutationFn: async (data: {
+      productId: string;
+      warehouseId: string;
+      type: string;
+      reason?: string;
+      quantity: string;
+      notes?: string;
+    }) => {
+      const res = await apiRequest("POST", "/api/stock-movements", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stock-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stock"] });
+      toast({ title: t("success"), description: "Mouvement enregistré" });
+      setIsMovementDialogOpen(false);
+      setFormData({
+        productId: "",
+        warehouseId: "",
+        destinationWarehouseId: "",
+        quantity: "",
+        reason: "",
+        notes: "",
+      });
+    },
+    onError: () => {
+      toast({ title: t("error"), description: "Erreur lors de l'enregistrement", variant: "destructive" });
+    },
+  });
+
+  const handleSaveMovement = () => {
+    if (!formData.productId || !formData.warehouseId || !formData.quantity) {
+      toast({ title: t("error"), description: "Veuillez remplir les champs obligatoires", variant: "destructive" });
+      return;
+    }
+
+    const type = movementType === "entry" ? "entry" : movementType === "exit" ? "exit" : "transfer_out";
+    
+    createMovementMutation.mutate({
+      productId: formData.productId,
+      warehouseId: formData.warehouseId,
+      type,
+      reason: formData.reason || undefined,
+      quantity: formData.quantity,
+      notes: formData.notes || undefined,
+    });
+  };
+
+  const getProductById = (id: string | null | undefined) => products.find(p => p.id === id);
+  const getWarehouseById = (id: string | null | undefined) => warehouses.find(w => w.id === id);
+
+  const enrichedStock = stockData.map(item => ({
+    ...item,
+    product: getProductById(item.productId),
+    warehouse: getWarehouseById(item.warehouseId),
+  }));
+
+  const enrichedMovements = movements.map(mov => ({
+    ...mov,
+    product: getProductById(mov.productId),
+    warehouse: getWarehouseById(mov.warehouseId),
+  }));
+
+  const filteredStock = enrichedStock.filter((item) => {
+    const productName = item.product?.name || "";
+    const productSku = item.product?.sku || "";
+    const warehouseName = item.warehouse?.name || "";
     const matchesSearch =
-      item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.productSku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesWarehouse = selectedWarehouse === "all" || item.warehouse === selectedWarehouse;
+      productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      productSku.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesWarehouse = selectedWarehouse === "all" || item.warehouseId === selectedWarehouse;
     return matchesSearch && matchesWarehouse;
   });
 
-  const totalStockValue = mockStockData.reduce((sum, item) => sum + item.quantity * item.averageCost, 0);
-  const lowStockCount = mockStockData.filter((item) => item.quantity < item.minStock && item.quantity > 0).length;
-  const outOfStockCount = mockStockData.filter((item) => item.quantity === 0).length;
-  const overstockCount = mockStockData.filter((item) => item.quantity > item.maxStock).length;
+  const totalStockValue = enrichedStock.reduce((sum, item) => {
+    const qty = Number(item.quantity) || 0;
+    const cost = Number(item.averageCost) || 0;
+    return sum + qty * cost;
+  }, 0);
+
+  const lowStockCount = enrichedStock.filter((item) => {
+    const qty = Number(item.quantity) || 0;
+    const minStock = item.product?.minStock || 0;
+    return qty < minStock && qty > 0;
+  }).length;
+
+  const outOfStockCount = enrichedStock.filter((item) => {
+    const qty = Number(item.quantity) || 0;
+    return qty === 0;
+  }).length;
+
+  const overstockCount = enrichedStock.filter((item) => {
+    const qty = Number(item.quantity) || 0;
+    const maxStock = item.product?.maxStock || 1000;
+    return qty > maxStock;
+  }).length;
 
   const getStockLevel = (qty: number, min: number, max: number) => {
     if (qty === 0) return { color: "bg-destructive", text: t("outOfStock"), percent: 0 };
@@ -218,6 +218,14 @@ export default function Stock() {
         return <Package className="h-4 w-4" />;
     }
   };
+
+  if (isLoadingStock || isLoadingMovements) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -281,14 +289,14 @@ export default function Stock() {
                 </div>
                 <div className="space-y-2">
                   <Label>Produit *</Label>
-                  <Select>
+                  <Select value={formData.productId} onValueChange={(v) => setFormData(prev => ({ ...prev, productId: v }))}>
                     <SelectTrigger data-testid="select-movement-product">
                       <SelectValue placeholder="Sélectionner un produit" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockStockData.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.productSku} - {item.productName}
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.sku} - {product.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -297,13 +305,13 @@ export default function Stock() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>{t("warehouse")} *</Label>
-                    <Select>
+                    <Select value={formData.warehouseId} onValueChange={(v) => setFormData(prev => ({ ...prev, warehouseId: v }))}>
                       <SelectTrigger data-testid="select-movement-warehouse">
                         <SelectValue placeholder={t("warehouse")} />
                       </SelectTrigger>
                       <SelectContent>
                         {warehouses.map((wh) => (
-                          <SelectItem key={wh} value={wh}>{wh}</SelectItem>
+                          <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -311,13 +319,13 @@ export default function Stock() {
                   {movementType === "transfer" && (
                     <div className="space-y-2">
                       <Label>Destination *</Label>
-                      <Select>
+                      <Select value={formData.destinationWarehouseId} onValueChange={(v) => setFormData(prev => ({ ...prev, destinationWarehouseId: v }))}>
                         <SelectTrigger data-testid="select-movement-destination">
                           <SelectValue placeholder="Destination" />
                         </SelectTrigger>
                         <SelectContent>
                           {warehouses.map((wh) => (
-                            <SelectItem key={wh} value={wh}>{wh}</SelectItem>
+                            <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -327,12 +335,18 @@ export default function Stock() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>{t("quantity")} *</Label>
-                    <Input type="number" placeholder="0" data-testid="input-movement-quantity" />
+                    <Input 
+                      type="number" 
+                      placeholder="0" 
+                      value={formData.quantity}
+                      onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                      data-testid="input-movement-quantity" 
+                    />
                   </div>
                   {movementType !== "transfer" && (
                     <div className="space-y-2">
                       <Label>{t("reason")}</Label>
-                      <Select>
+                      <Select value={formData.reason} onValueChange={(v) => setFormData(prev => ({ ...prev, reason: v }))}>
                         <SelectTrigger data-testid="select-movement-reason">
                           <SelectValue placeholder={t("reason")} />
                         </SelectTrigger>
@@ -347,14 +361,26 @@ export default function Stock() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("notes")}</Label>
-                  <Textarea placeholder="Notes additionnelles" data-testid="input-movement-notes" />
+                  <Textarea 
+                    placeholder="Notes additionnelles" 
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    data-testid="input-movement-notes" 
+                  />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsMovementDialogOpen(false)}>
                   {t("cancel")}
                 </Button>
-                <Button data-testid="button-save-movement">{t("save")}</Button>
+                <Button 
+                  onClick={handleSaveMovement} 
+                  disabled={createMovementMutation.isPending}
+                  data-testid="button-save-movement"
+                >
+                  {createMovementMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {t("save")}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -444,7 +470,7 @@ export default function Stock() {
                   <SelectContent>
                     <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                     {warehouses.map((wh) => (
-                      <SelectItem key={wh} value={wh}>{wh}</SelectItem>
+                      <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -466,39 +492,54 @@ export default function Stock() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStock.map((item) => {
-                      const stockLevel = getStockLevel(item.quantity, item.minStock, item.maxStock);
-                      return (
-                        <TableRow key={item.id} data-testid={`row-stock-${item.id}`}>
-                          <TableCell className="font-mono text-sm">{item.productSku}</TableCell>
-                          <TableCell className="font-medium">{item.productName}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" size="sm">{item.warehouse}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(item.quantity)}</TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">
-                            {formatNumber(item.reservedQty)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-medium">
-                            {formatNumber(item.availableQty)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Progress value={stockLevel.percent} className="h-2 w-16" />
-                              <Badge 
-                                variant={item.quantity === 0 ? "destructive" : item.quantity < item.minStock ? "secondary" : "outline"} 
-                                size="sm"
-                              >
-                                {stockLevel.text}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            {formatCurrency(item.quantity * item.averageCost, currency)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {filteredStock.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                          Aucun stock trouvé
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStock.map((item) => {
+                        const qty = Number(item.quantity) || 0;
+                        const reserved = Number(item.reservedQuantity) || 0;
+                        const available = qty - reserved;
+                        const minStock = item.product?.minStock || 0;
+                        const maxStock = item.product?.maxStock || 1000;
+                        const avgCost = Number(item.averageCost) || 0;
+                        const stockLevel = getStockLevel(qty, minStock, maxStock);
+                        
+                        return (
+                          <TableRow key={item.id} data-testid={`row-stock-${item.id}`}>
+                            <TableCell className="font-mono text-sm">{item.product?.sku || "-"}</TableCell>
+                            <TableCell className="font-medium">{item.product?.name || "-"}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" size="sm">{item.warehouse?.name || "-"}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">{formatNumber(qty)}</TableCell>
+                            <TableCell className="text-right font-mono text-muted-foreground">
+                              {formatNumber(reserved)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-medium">
+                              {formatNumber(available)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Progress value={stockLevel.percent} className="h-2 w-16" />
+                                <Badge 
+                                  variant={qty === 0 ? "destructive" : qty < minStock ? "secondary" : "outline"} 
+                                  size="sm"
+                                >
+                                  {stockLevel.text}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(qty * avgCost, currency)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -523,38 +564,48 @@ export default function Stock() {
                       <TableHead className="text-right">{t("quantity")}</TableHead>
                       <TableHead className="text-right">Coût</TableHead>
                       <TableHead>Référence</TableHead>
-                      <TableHead>Par</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockMovements.map((mov) => (
-                      <TableRow key={mov.id} data-testid={`row-movement-${mov.id}`}>
-                        <TableCell className="text-sm">
-                          {formatDateTime(mov.date, language)}
+                    {enrichedMovements.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                          Aucun mouvement enregistré
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getMovementIcon(mov.type)}
-                            <span className="text-sm">{t(mov.type)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{mov.product}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" size="sm">{mov.warehouse}</Badge>
-                        </TableCell>
-                        <TableCell className={`text-right font-mono ${mov.type === "entry" || mov.type === "transfer_in" ? "text-chart-2" : mov.type === "exit" || mov.type === "transfer_out" ? "text-destructive" : ""}`}>
-                          {mov.type === "entry" || mov.type === "transfer_in" ? "+" : "-"}
-                          {formatNumber(Math.abs(mov.quantity))}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCurrency(mov.totalCost, currency)}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {mov.reference}
-                        </TableCell>
-                        <TableCell className="text-sm">{mov.createdBy}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      enrichedMovements.map((mov) => {
+                        const qty = Number(mov.quantity) || 0;
+                        const totalCost = Number(mov.totalCost) || 0;
+                        return (
+                          <TableRow key={mov.id} data-testid={`row-movement-${mov.id}`}>
+                            <TableCell className="text-sm">
+                              {mov.createdAt ? formatDateTime(new Date(mov.createdAt), language) : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getMovementIcon(mov.type)}
+                                <span className="text-sm">{t(mov.type)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{mov.product?.name || "-"}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" size="sm">{mov.warehouse?.name || "-"}</Badge>
+                            </TableCell>
+                            <TableCell className={`text-right font-mono ${mov.type === "entry" || mov.type === "transfer_in" ? "text-chart-2" : mov.type === "exit" || mov.type === "transfer_out" ? "text-destructive" : ""}`}>
+                              {mov.type === "entry" || mov.type === "transfer_in" ? "+" : "-"}
+                              {formatNumber(Math.abs(qty))}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(totalCost, currency)}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm text-muted-foreground">
+                              {mov.referenceId || mov.reason || "-"}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>

@@ -659,32 +659,7 @@ export async function registerRoutes(
   app.post("/api/stock-movements", async (req, res) => {
     try {
       const data = insertStockMovementSchema.parse(req.body);
-      const movement = await storage.createStockMovement(data);
-      
-      // Update stock based on movement type
-      if (data.warehouseId && data.productId) {
-        const existingStock = await storage.getStockByProduct(data.productId, data.warehouseId);
-        const currentQty = existingStock.length > 0 ? parseFloat(existingStock[0].quantity || "0") : 0;
-        const movementQty = parseFloat(data.quantity);
-        
-        let newQty = currentQty;
-        if (data.type === "entry" || data.type === "transfer_in" || data.type === "return") {
-          newQty = currentQty + movementQty;
-        } else if (data.type === "exit" || data.type === "transfer_out") {
-          newQty = currentQty - movementQty;
-        } else if (data.type === "adjustment") {
-          newQty = movementQty; // Direct set for adjustments
-        }
-        
-        await storage.upsertStock({
-          tenantId: data.tenantId,
-          warehouseId: data.warehouseId,
-          productId: data.productId,
-          quantity: newQty.toString(),
-          lastMovementDate: new Date(),
-        });
-      }
-      
+      const movement = await storage.createStockMovementWithStockUpdate(data);
       res.status(201).json(movement);
     } catch (error) {
       if (error instanceof z.ZodError) {
