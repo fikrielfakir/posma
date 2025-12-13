@@ -12,6 +12,10 @@ import {
   LogOut,
   ChevronDown,
   Building2,
+  Brain,
+  MessageCircle,
+  Lightbulb,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,6 +56,13 @@ const managementNavItems = [
   { title: "inventory", url: "/inventory", icon: ClipboardList },
   { title: "users", url: "/users", icon: Users },
   { title: "settings", url: "/settings", icon: Settings },
+];
+
+const aiNavItems = [
+  { title: "Prédictions", url: "/ai/predictions", icon: Brain },
+  { title: "Assistant IA", url: "/ai/chatbot", icon: MessageCircle },
+  { title: "Recommandations", url: "/ai/recommendations", icon: Lightbulb },
+  { title: "Anomalies", url: "/ai/anomalies", icon: Shield },
 ];
 
 export function AppSidebar() {
@@ -146,6 +157,32 @@ export function AppSidebar() {
                     <Link href={item.url}>
                       <item.icon className="h-5 w-5" />
                       <span>{t(item.title)}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarSeparator />
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs uppercase tracking-wide">
+            Intelligence Artificielle
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {aiNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-ai-${item.title}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

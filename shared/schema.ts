@@ -393,6 +393,276 @@ export const insertCurrencyRateSchema = createInsertSchema(currencyRates).omit({
 export type InsertCurrencyRate = z.infer<typeof insertCurrencyRateSchema>;
 export type CurrencyRate = typeof currencyRates.$inferSelect;
 
+// ============== PURCHASE REQUESTS ==============
+export const purchaseRequests = pgTable("purchase_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  requestNumber: text("request_number").notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  status: text("status").default("draft"), // draft, pending, approved, rejected, converted
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  requestDate: timestamp("request_date").defaultNow(),
+  neededByDate: timestamp("needed_by_date"),
+  justification: text("justification"),
+  notes: text("notes"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequests).omit({ id: true, createdAt: true });
+export type InsertPurchaseRequest = z.infer<typeof insertPurchaseRequestSchema>;
+export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
+
+export const purchaseRequestItems = pgTable("purchase_request_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requestId: varchar("request_id").references(() => purchaseRequests.id),
+  productId: varchar("product_id").references(() => products.id),
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(),
+  estimatedPrice: decimal("estimated_price", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+});
+
+export const insertPurchaseRequestItemSchema = createInsertSchema(purchaseRequestItems).omit({ id: true });
+export type InsertPurchaseRequestItem = z.infer<typeof insertPurchaseRequestItemSchema>;
+export type PurchaseRequestItem = typeof purchaseRequestItems.$inferSelect;
+
+// ============== GOODS RECEIPTS ==============
+export const goodsReceipts = pgTable("goods_receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  receiptNumber: text("receipt_number").notNull(),
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  status: text("status").default("draft"), // draft, received, inspected, accepted, rejected, partial
+  receiptDate: timestamp("receipt_date").defaultNow(),
+  deliveryNote: text("delivery_note"),
+  inspectedBy: varchar("inspected_by").references(() => users.id),
+  inspectionNotes: text("inspection_notes"),
+  notes: text("notes"),
+  receivedBy: varchar("received_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertGoodsReceiptSchema = createInsertSchema(goodsReceipts).omit({ id: true, createdAt: true });
+export type InsertGoodsReceipt = z.infer<typeof insertGoodsReceiptSchema>;
+export type GoodsReceipt = typeof goodsReceipts.$inferSelect;
+
+export const goodsReceiptItems = pgTable("goods_receipt_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  receiptId: varchar("receipt_id").references(() => goodsReceipts.id),
+  productId: varchar("product_id").references(() => products.id),
+  orderedQuantity: decimal("ordered_quantity", { precision: 12, scale: 3 }),
+  receivedQuantity: decimal("received_quantity", { precision: 12, scale: 3 }).notNull(),
+  acceptedQuantity: decimal("accepted_quantity", { precision: 12, scale: 3 }),
+  rejectedQuantity: decimal("rejected_quantity", { precision: 12, scale: 3 }).default("0"),
+  rejectionReason: text("rejection_reason"),
+  unitCost: decimal("unit_cost", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+});
+
+export const insertGoodsReceiptItemSchema = createInsertSchema(goodsReceiptItems).omit({ id: true });
+export type InsertGoodsReceiptItem = z.infer<typeof insertGoodsReceiptItemSchema>;
+export type GoodsReceiptItem = typeof goodsReceiptItems.$inferSelect;
+
+// ============== EXIT NOTES ==============
+export const exitNotes = pgTable("exit_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  exitNumber: text("exit_number").notNull(),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  destinationType: text("destination_type").notNull(), // internal, transfer, consumption, sample, gift, loss
+  destinationWarehouseId: varchar("destination_warehouse_id").references(() => warehouses.id),
+  destinationDetails: text("destination_details"),
+  status: text("status").default("draft"), // draft, pending, approved, completed, cancelled
+  exitDate: timestamp("exit_date").defaultNow(),
+  reason: text("reason"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertExitNoteSchema = createInsertSchema(exitNotes).omit({ id: true, createdAt: true });
+export type InsertExitNote = z.infer<typeof insertExitNoteSchema>;
+export type ExitNote = typeof exitNotes.$inferSelect;
+
+export const exitNoteItems = pgTable("exit_note_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  exitNoteId: varchar("exit_note_id").references(() => exitNotes.id),
+  productId: varchar("product_id").references(() => products.id),
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(),
+  unitCost: decimal("unit_cost", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+});
+
+export const insertExitNoteItemSchema = createInsertSchema(exitNoteItems).omit({ id: true });
+export type InsertExitNoteItem = z.infer<typeof insertExitNoteItemSchema>;
+export type ExitNoteItem = typeof exitNoteItems.$inferSelect;
+
+// ============== PURCHASE RETURNS ==============
+export const purchaseReturns = pgTable("purchase_returns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  returnNumber: text("return_number").notNull(),
+  purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id),
+  goodsReceiptId: varchar("goods_receipt_id").references(() => goodsReceipts.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  status: text("status").default("draft"), // draft, pending, approved, shipped, refunded, cancelled
+  returnDate: timestamp("return_date").defaultNow(),
+  reason: text("reason").notNull(), // defective, wrong_item, damaged, quality_issue, excess, other
+  reasonDetails: text("reason_details"),
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 12, scale: 2 }).default("0"),
+  refundMethod: text("refund_method"), // credit_note, refund, replacement
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPurchaseReturnSchema = createInsertSchema(purchaseReturns).omit({ id: true, createdAt: true });
+export type InsertPurchaseReturn = z.infer<typeof insertPurchaseReturnSchema>;
+export type PurchaseReturn = typeof purchaseReturns.$inferSelect;
+
+export const purchaseReturnItems = pgTable("purchase_return_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  returnId: varchar("return_id").references(() => purchaseReturns.id),
+  productId: varchar("product_id").references(() => products.id),
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(),
+  unitPrice: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 12, scale: 2 }).default("0"),
+  reason: text("reason"),
+});
+
+export const insertPurchaseReturnItemSchema = createInsertSchema(purchaseReturnItems).omit({ id: true });
+export type InsertPurchaseReturnItem = z.infer<typeof insertPurchaseReturnItemSchema>;
+export type PurchaseReturnItem = typeof purchaseReturnItems.$inferSelect;
+
+// ============== AI PREDICTIONS ==============
+export const aiPredictions = pgTable("ai_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  modelType: text("model_type").notNull(), // demand_forecast, sales_prediction, churn, abc_classification, price_optimization
+  entityType: text("entity_type").notNull(), // product, customer, supplier, category
+  entityId: varchar("entity_id"),
+  predictionDate: timestamp("prediction_date").notNull(),
+  horizonDays: integer("horizon_days").default(30),
+  predictedValue: decimal("predicted_value", { precision: 15, scale: 4 }),
+  confidenceLevel: decimal("confidence_level", { precision: 5, scale: 2 }),
+  lowerBound: decimal("lower_bound", { precision: 15, scale: 4 }),
+  upperBound: decimal("upper_bound", { precision: 15, scale: 4 }),
+  features: jsonb("features").$type<Record<string, any>>(),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAiPredictionSchema = createInsertSchema(aiPredictions).omit({ id: true, createdAt: true });
+export type InsertAiPrediction = z.infer<typeof insertAiPredictionSchema>;
+export type AiPrediction = typeof aiPredictions.$inferSelect;
+
+// ============== AI RECOMMENDATIONS ==============
+export const aiRecommendations = pgTable("ai_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  recommendationType: text("recommendation_type").notNull(), // cross_sell, upsell, reorder, pricing, promotion
+  targetType: text("target_type").notNull(), // customer, product, order
+  targetId: varchar("target_id"),
+  recommendedItems: jsonb("recommended_items").$type<Array<{productId: string; score: number; reason: string}>>(),
+  score: decimal("score", { precision: 5, scale: 4 }),
+  reason: text("reason"),
+  isActioned: boolean("is_actioned").default(false),
+  actionedAt: timestamp("actioned_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAiRecommendationSchema = createInsertSchema(aiRecommendations).omit({ id: true, createdAt: true });
+export type InsertAiRecommendation = z.infer<typeof insertAiRecommendationSchema>;
+export type AiRecommendation = typeof aiRecommendations.$inferSelect;
+
+// ============== AI ANOMALIES ==============
+export const aiAnomalies = pgTable("ai_anomalies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  anomalyType: text("anomaly_type").notNull(), // fraud, theft, error, unusual_pattern, price_manipulation
+  severity: text("severity").default("medium"), // low, medium, high, critical
+  entityType: text("entity_type").notNull(), // transaction, user, product, sale, stock_movement
+  entityId: varchar("entity_id"),
+  description: text("description"),
+  detectedValue: decimal("detected_value", { precision: 15, scale: 4 }),
+  expectedValue: decimal("expected_value", { precision: 15, scale: 4 }),
+  deviationPercent: decimal("deviation_percent", { precision: 8, scale: 2 }),
+  riskScore: decimal("risk_score", { precision: 5, scale: 4 }),
+  evidence: jsonb("evidence").$type<Record<string, any>>(),
+  status: text("status").default("new"), // new, investigating, confirmed, false_positive, resolved
+  investigatedBy: varchar("investigated_by").references(() => users.id),
+  investigatedAt: timestamp("investigated_at"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAiAnomalySchema = createInsertSchema(aiAnomalies).omit({ id: true, createdAt: true });
+export type InsertAiAnomaly = z.infer<typeof insertAiAnomalySchema>;
+export type AiAnomaly = typeof aiAnomalies.$inferSelect;
+
+// ============== CHATBOT CONVERSATIONS ==============
+export const chatbotConversations = pgTable("chatbot_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id").notNull(),
+  language: text("language").default("fr"), // fr, ar
+  status: text("status").default("active"), // active, closed, escalated
+  startedAt: timestamp("started_at").defaultNow(),
+  endedAt: timestamp("ended_at"),
+  escalatedTo: varchar("escalated_to").references(() => users.id),
+  satisfaction: integer("satisfaction"), // 1-5
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+});
+
+export const insertChatbotConversationSchema = createInsertSchema(chatbotConversations).omit({ id: true });
+export type InsertChatbotConversation = z.infer<typeof insertChatbotConversationSchema>;
+export type ChatbotConversation = typeof chatbotConversations.$inferSelect;
+
+export const chatbotMessages = pgTable("chatbot_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => chatbotConversations.id),
+  role: text("role").notNull(), // user, assistant, system
+  content: text("content").notNull(),
+  intent: text("intent"), // product_query, stock_check, order_status, promotion_info, complaint, other
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  sources: jsonb("sources").$type<Array<{type: string; id: string; excerpt: string}>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChatbotMessageSchema = createInsertSchema(chatbotMessages).omit({ id: true, createdAt: true });
+export type InsertChatbotMessage = z.infer<typeof insertChatbotMessageSchema>;
+export type ChatbotMessage = typeof chatbotMessages.$inferSelect;
+
+// ============== CUSTOMER FEEDBACK & SENTIMENT ==============
+export const customerFeedback = pgTable("customer_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  customerId: varchar("customer_id").references(() => customers.id),
+  saleId: varchar("sale_id").references(() => sales.id),
+  channel: text("channel").default("app"), // app, web, sms, call, email
+  content: text("content"),
+  rating: integer("rating"), // 1-5
+  sentiment: text("sentiment"), // positive, neutral, negative
+  sentimentScore: decimal("sentiment_score", { precision: 5, scale: 4 }),
+  topics: jsonb("topics").$type<string[]>(),
+  isProcessed: boolean("is_processed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback).omit({ id: true, createdAt: true });
+export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
+export type CustomerFeedback = typeof customerFeedback.$inferSelect;
+
 // ============== RELATIONS ==============
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),

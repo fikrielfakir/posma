@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Eye, FileText, Truck, Check, X, ShoppingCart, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, FileText, Truck, Check, X, ShoppingCart, Loader2, Package, RotateCcw, ClipboardList, PackageOpen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/contexts/AppContext";
 import { formatCurrency, formatDate } from "@/lib/i18n";
 import type { PurchaseOrder, Supplier, Warehouse } from "@shared/schema";
@@ -31,7 +32,48 @@ const statusConfig: Record<string, { variant: "default" | "secondary" | "outline
   cancelled: { variant: "destructive", icon: X },
 };
 
-export default function Purchases() {
+function PurchaseRequestsTab() {
+  const { t, currency, language } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1 md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input type="search" placeholder="Rechercher une demande..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        </div>
+        <Button><Plus className="mr-2 h-4 w-4" />Nouvelle Demande</Button>
+      </div>
+      
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>N° Demande</TableHead>
+                <TableHead>Demandeur</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Priorité</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  Aucune demande d'achat trouvée
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PurchaseOrdersTab() {
   const { t, currency, language } = useApp();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,91 +173,7 @@ export default function Purchases() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">{t("purchases")}</h1>
-          <p className="text-muted-foreground">Gestion des commandes fournisseurs</p>
-        </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-new-purchase"><Plus className="mr-2 h-4 w-4" />{t("newPurchase")}</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Nouvelle commande d'achat</DialogTitle>
-              <DialogDescription>Créer une nouvelle commande fournisseur</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("supplier")} *</Label>
-                  <Select value={formData.supplierId} onValueChange={(v) => setFormData(prev => ({ ...prev, supplierId: v }))}>
-                    <SelectTrigger data-testid="select-purchase-supplier">
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("warehouse")} *</Label>
-                  <Select value={formData.warehouseId} onValueChange={(v) => setFormData(prev => ({ ...prev, warehouseId: v }))}>
-                    <SelectTrigger data-testid="select-purchase-warehouse">
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {warehouses.map(w => (
-                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("orderDate")}</Label>
-                  <Input 
-                    type="date" 
-                    value={formData.orderDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, orderDate: e.target.value }))}
-                    data-testid="input-order-date" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("expectedDate")}</Label>
-                  <Input 
-                    type="date" 
-                    value={formData.expectedDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, expectedDate: e.target.value }))}
-                    data-testid="input-expected-date" 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>{t("notes")}</Label>
-                <Textarea 
-                  placeholder="Notes de la commande" 
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  data-testid="input-purchase-notes"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>{t("cancel")}</Button>
-              <Button onClick={handleSave} disabled={createMutation.isPending} data-testid="button-save-purchase">
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t("save")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
+    <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">{t("total")}</p><p className="text-2xl font-bold">{stats.total}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">{t("pending")}</p><p className="text-2xl font-bold text-chart-3">{stats.pending}</p></CardContent></Card>
@@ -241,6 +199,83 @@ export default function Purchases() {
                 <SelectItem value="received">{t("received")}</SelectItem>
               </SelectContent>
             </Select>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-new-purchase"><Plus className="mr-2 h-4 w-4" />{t("newPurchase")}</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Nouvelle commande d'achat</DialogTitle>
+                  <DialogDescription>Créer une nouvelle commande fournisseur</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("supplier")} *</Label>
+                      <Select value={formData.supplierId} onValueChange={(v) => setFormData(prev => ({ ...prev, supplierId: v }))}>
+                        <SelectTrigger data-testid="select-purchase-supplier">
+                          <SelectValue placeholder="Sélectionner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliers.map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("warehouse")} *</Label>
+                      <Select value={formData.warehouseId} onValueChange={(v) => setFormData(prev => ({ ...prev, warehouseId: v }))}>
+                        <SelectTrigger data-testid="select-purchase-warehouse">
+                          <SelectValue placeholder="Sélectionner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {warehouses.map(w => (
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("orderDate")}</Label>
+                      <Input 
+                        type="date" 
+                        value={formData.orderDate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, orderDate: e.target.value }))}
+                        data-testid="input-order-date" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("expectedDate")}</Label>
+                      <Input 
+                        type="date" 
+                        value={formData.expectedDate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, expectedDate: e.target.value }))}
+                        data-testid="input-expected-date" 
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("notes")}</Label>
+                    <Textarea 
+                      placeholder="Notes de la commande" 
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      data-testid="input-purchase-notes"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>{t("cancel")}</Button>
+                  <Button onClick={handleSave} disabled={createMutation.isPending} data-testid="button-save-purchase">
+                    {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t("save")}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent>
@@ -273,11 +308,11 @@ export default function Purchases() {
                       <TableRow key={po.id} data-testid={`row-purchase-${po.id}`}>
                         <TableCell className="font-mono font-medium">{po.orderNumber}</TableCell>
                         <TableCell>{po.supplier?.name || "-"}</TableCell>
-                        <TableCell><Badge variant="outline" size="sm">{po.warehouse?.name || "-"}</Badge></TableCell>
+                        <TableCell><Badge variant="outline">{po.warehouse?.name || "-"}</Badge></TableCell>
                         <TableCell className="text-sm">{po.orderDate ? formatDate(new Date(po.orderDate), language) : "-"}</TableCell>
                         <TableCell className="text-sm">{po.expectedDate ? formatDate(new Date(po.expectedDate), language) : "-"}</TableCell>
                         <TableCell className="text-right font-mono">{formatCurrency(total, currency)}</TableCell>
-                        <TableCell><Badge variant={config?.variant || "outline"} size="sm">{t(po.status || "draft")}</Badge></TableCell>
+                        <TableCell><Badge variant={config?.variant || "outline"}>{t(po.status || "draft")}</Badge></TableCell>
                         <TableCell><Button variant="ghost" size="icon" data-testid={`button-view-purchase-${po.id}`}><Eye className="h-4 w-4" /></Button></TableCell>
                       </TableRow>
                     );
@@ -288,6 +323,199 @@ export default function Purchases() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ReceiptsTab() {
+  const { t } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1 md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input type="search" placeholder="Rechercher un bon..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        </div>
+        <Button><Plus className="mr-2 h-4 w-4" />Nouveau Bon de Réception</Button>
+      </div>
+      
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>N° Bon</TableHead>
+                <TableHead>N° Commande</TableHead>
+                <TableHead>Fournisseur</TableHead>
+                <TableHead>Date Réception</TableHead>
+                <TableHead>Entrepôt</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  Aucun bon de réception trouvé
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ExitNotesTab() {
+  const { t } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1 md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input type="search" placeholder="Rechercher un bon..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        </div>
+        <Button><Plus className="mr-2 h-4 w-4" />Nouveau Bon de Sortie</Button>
+      </div>
+      
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>N° Bon</TableHead>
+                <TableHead>Destination</TableHead>
+                <TableHead>Date Sortie</TableHead>
+                <TableHead>Entrepôt</TableHead>
+                <TableHead>Motif</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  Aucun bon de sortie trouvé
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PurchaseReturnsTab() {
+  const { t, currency, language } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1 md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input type="search" placeholder="Rechercher un retour..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        </div>
+        <Button><Plus className="mr-2 h-4 w-4" />Nouveau Retour</Button>
+      </div>
+      
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>N° Retour</TableHead>
+                <TableHead>N° Commande</TableHead>
+                <TableHead>Fournisseur</TableHead>
+                <TableHead>Date Retour</TableHead>
+                <TableHead className="text-right">Montant</TableHead>
+                <TableHead>Motif</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                  Aucun retour d'achat trouvé
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function Purchases() {
+  const { t } = useApp();
+  const [activeTab, setActiveTab] = useState("orders");
+
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold" data-testid="text-page-title">{t("purchases")}</h1>
+          <p className="text-muted-foreground">Gestion des achats et approvisionnements</p>
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="requests" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Demande d'Achat</span>
+            <span className="sm:hidden">Demandes</span>
+          </TabsTrigger>
+          <TabsTrigger value="orders" className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">Bon de Commande</span>
+            <span className="sm:hidden">Commandes</span>
+          </TabsTrigger>
+          <TabsTrigger value="receipts" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Bon Réception</span>
+            <span className="sm:hidden">Réception</span>
+          </TabsTrigger>
+          <TabsTrigger value="exits" className="flex items-center gap-2">
+            <PackageOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Bon de Sortie</span>
+            <span className="sm:hidden">Sortie</span>
+          </TabsTrigger>
+          <TabsTrigger value="returns" className="flex items-center gap-2">
+            <RotateCcw className="h-4 w-4" />
+            <span className="hidden sm:inline">Retour d'Achat</span>
+            <span className="sm:hidden">Retours</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="requests" className="mt-6">
+          <PurchaseRequestsTab />
+        </TabsContent>
+        
+        <TabsContent value="orders" className="mt-6">
+          <PurchaseOrdersTab />
+        </TabsContent>
+        
+        <TabsContent value="receipts" className="mt-6">
+          <ReceiptsTab />
+        </TabsContent>
+        
+        <TabsContent value="exits" className="mt-6">
+          <ExitNotesTab />
+        </TabsContent>
+        
+        <TabsContent value="returns" className="mt-6">
+          <PurchaseReturnsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

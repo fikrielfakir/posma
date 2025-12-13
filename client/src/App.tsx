@@ -18,6 +18,10 @@ import Sales from "@/pages/sales";
 import Inventory from "@/pages/inventory";
 import Users from "@/pages/users";
 import Settings from "@/pages/settings";
+import AIPredictions from "@/pages/ai-predictions";
+import AIChatbot from "@/pages/ai-chatbot";
+import AIRecommendations from "@/pages/ai-recommendations";
+import AIAnomalies from "@/pages/ai-anomalies";
 
 function Router() {
   return (
@@ -32,6 +36,10 @@ function Router() {
       <Route path="/inventory" component={Inventory} />
       <Route path="/users" component={Users} />
       <Route path="/settings" component={Settings} />
+      <Route path="/ai/predictions" component={AIPredictions} />
+      <Route path="/ai/chatbot" component={AIChatbot} />
+      <Route path="/ai/recommendations" component={AIRecommendations} />
+      <Route path="/ai/anomalies" component={AIAnomalies} />
       <Route component={NotFound} />
     </Switch>
   );
