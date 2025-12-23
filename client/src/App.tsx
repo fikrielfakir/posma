@@ -27,6 +27,7 @@ import POS from "@/pages/pos";
 import CashSessions from "@/pages/cash-sessions";
 import Invoices from "@/pages/invoices";
 import FinancialDashboard from "@/pages/financial-dashboard";
+import Production from "@/pages/production";
 
 function Router() {
   return (
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/customers" component={Customers} />
       <Route path="/sales" component={Sales} />
       <Route path="/inventory" component={Inventory} />
+      <Route path="/production" component={Production} />
       <Route path="/users" component={Users} />
       <Route path="/settings" component={Settings} />
       <Route path="/ai/predictions" component={AIPredictions} />

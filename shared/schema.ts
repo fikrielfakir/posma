@@ -1126,6 +1126,70 @@ export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: t
 export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
 
+// ============== PRODUCTION MANAGEMENT (ICE MANUFACTURING) ==============
+export const productionOrders = pgTable("production_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  orderNumber: text("order_number").notNull(),
+  productId: varchar("product_id").references(() => products.id),
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).notNull(),
+  unit: text("unit").default("kg"), // kg, pieces, blocks, bags
+  status: text("status").default("planned"), // planned, in_progress, completed, cancelled, on_hold
+  priority: text("priority").default("normal"), // low, normal, high, urgent
+  scheduledStartDate: timestamp("scheduled_start_date"),
+  scheduledEndDate: timestamp("scheduled_end_date"),
+  actualStartDate: timestamp("actual_start_date"),
+  actualEndDate: timestamp("actual_end_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProductionOrderSchema = createInsertSchema(productionOrders).omit({ id: true, createdAt: true });
+export type InsertProductionOrder = z.infer<typeof insertProductionOrderSchema>;
+export type ProductionOrder = typeof productionOrders.$inferSelect;
+
+export const productionBatches = pgTable("production_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  productionOrderId: varchar("production_order_id").references(() => productionOrders.id),
+  batchNumber: text("batch_number").notNull(),
+  plannedQuantity: decimal("planned_quantity", { precision: 12, scale: 3 }).notNull(),
+  actualQuantity: decimal("actual_quantity", { precision: 12, scale: 3 }).default("0"),
+  wasteQuantity: decimal("waste_quantity", { precision: 12, scale: 3 }).default("0"),
+  status: text("status").default("pending"), // pending, in_progress, completed, failed
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  temperature: decimal("temperature", { precision: 5, scale: 2 }),
+  humidity: decimal("humidity", { precision: 5, scale: 2 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProductionBatchSchema = createInsertSchema(productionBatches).omit({ id: true, createdAt: true });
+export type InsertProductionBatch = z.infer<typeof insertProductionBatchSchema>;
+export type ProductionBatch = typeof productionBatches.$inferSelect;
+
+export const qualityControls = pgTable("quality_controls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  productionBatchId: varchar("production_batch_id").references(() => productionBatches.id),
+  parameter: text("parameter").notNull(), // clarity, hardness, purity, density, shape
+  expectedValue: text("expected_value"),
+  actualValue: text("actual_value"),
+  status: text("status").default("pending"), // pending, passed, failed, rework
+  notes: text("notes"),
+  inspectedBy: varchar("inspected_by").references(() => users.id),
+  inspectionDate: timestamp("inspection_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertQualityControlSchema = createInsertSchema(qualityControls).omit({ id: true, createdAt: true });
+export type InsertQualityControl = z.infer<typeof insertQualityControlSchema>;
+export type QualityControl = typeof qualityControls.$inferSelect;
+
 // ============== RELATIONS ==============
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
