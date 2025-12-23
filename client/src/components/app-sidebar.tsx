@@ -21,6 +21,7 @@ import {
   Wallet,
   FileText,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -64,6 +65,7 @@ const salesNavItems = [
 
 const managementNavItems = [
   { title: "inventory", url: "/inventory", icon: ClipboardList },
+  { title: "production", url: "/production", icon: Zap },
   { title: "users", url: "/users", icon: Users },
   { title: "settings", url: "/settings", icon: Settings },
 ];
