@@ -1,0 +1,133 @@
+PHASE 3: Production Management (6-8 weeks)
+Objectives
+
+Production planning and scheduling
+Production execution tracking
+Machine/equipment management
+Basic quality control
+
+Deliverables
+3.1 Product Catalog (Ice Products)
+API Endpoints:
+GET    /api/products
+POST   /api/products
+GET    /api/products/:id
+PUT    /api/products/:id
+DELETE /api/products/:id
+GET    /api/products/categories
+Features:
+
+Ice product types (cubes, blocks, crushed, sizes)
+Product specifications
+Bill of materials (BOM)
+Standard production time
+Packaging options
+
+3.2 Production Machines
+API Endpoints:
+GET    /api/production/machines
+POST   /api/production/machines
+GET    /api/production/machines/:id
+PUT    /api/production/machines/:id
+DELETE /api/production/machines/:id
+GET    /api/production/machines/:id/status
+PUT    /api/production/machines/:id/status
+GET    /api/production/machines/:id/maintenance
+POST   /api/production/machines/:id/maintenance
+Features:
+
+Machine registry
+Machine capacity
+Current status (operational, maintenance, broken)
+Maintenance schedule
+Downtime tracking
+
+3.3 Production Planning
+API Endpoints:
+GET    /api/production/plans
+POST   /api/production/plans
+GET    /api/production/plans/:id
+PUT    /api/production/plans/:id
+DELETE /api/production/plans/:id
+GET    /api/production/plans/calendar/:month
+GET    /api/production/capacity/check
+Features:
+
+Weekly/daily production plans
+Capacity planning
+Resource allocation
+Production forecasting
+
+3.4 Production Orders & Execution
+API Endpoints:
+GET    /api/production/orders
+POST   /api/production/orders
+GET    /api/production/orders/:id
+PUT    /api/production/orders/:id
+DELETE /api/production/orders/:id
+POST   /api/production/orders/:id/start
+POST   /api/production/orders/:id/pause
+POST   /api/production/orders/:id/resume
+POST   /api/production/orders/:id/complete
+POST   /api/production/orders/:id/cancel
+GET    /api/production/orders/:id/progress
+GET    /api/production/orders/active
+GET    /api/production/orders/status/:status
+Features:
+
+Create production orders
+Material reservation
+Real-time progress tracking
+Start/stop production
+Actual vs planned tracking
+Waste/loss recording
+
+3.5 Production Batches
+API Endpoints:
+GET    /api/production/batches
+POST   /api/production/batches
+GET    /api/production/batches/:id
+PUT    /api/production/batches/:id
+GET    /api/production/batches/:id/materials-used
+GET    /api/production/batches/:id/output
+POST   /api/production/batches/:id/complete
+Features:
+
+Batch tracking
+Input materials consumed
+Output quantity
+Production time
+Yield calculation
+Energy consumption (water, electricity)
+
+3.6 Basic Quality Control
+API Endpoints:
+GET    /api/quality/checks
+POST   /api/quality/checks
+GET    /api/quality/checks/:id
+PUT    /api/quality/checks/:id
+POST   /api/quality/checks/:id/approve
+POST   /api/quality/checks/:id/reject
+GET    /api/quality/parameters
+Features:
+
+Quality checkpoints
+Quality parameters (clarity, hardness, purity)
+Pass/fail recording
+Non-conformity basic tracking
+
+Database Tables (Phase 3)
+
+products
+product_categories
+bills_of_material
+machines
+machine_maintenance
+production_plans
+production_orders
+production_batches
+batch_materials
+batch_outputs
+quality_checks
+quality_parameters
+
