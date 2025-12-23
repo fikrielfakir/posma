@@ -28,10 +28,12 @@ import CashSessions from "@/pages/cash-sessions";
 import Invoices from "@/pages/invoices";
 import FinancialDashboard from "@/pages/financial-dashboard";
 import Production from "@/pages/production";
+import Login from "@/pages/login";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={Login} />
       <Route path="/" component={Dashboard} />
       <Route path="/products" component={Products} />
       <Route path="/stock" component={Stock} />

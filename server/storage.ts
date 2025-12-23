@@ -36,6 +36,11 @@ import {
   payments, type Payment, type InsertPayment,
   invoices, type Invoice, type InsertInvoice,
   promotions, type Promotion, type InsertPromotion,
+  permissions, type Permission, type InsertPermission,
+  rolePermissions, type RolePermission, type InsertRolePermission,
+  userRoles, type UserRole, type InsertUserRole,
+  notifications, type Notification, type InsertNotification,
+  activityLogs, type ActivityLog, type InsertActivityLog,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -1305,6 +1310,75 @@ export class DatabaseStorage implements IStorage {
   async deletePromotion(id: string): Promise<boolean> {
     await db.delete(promotions).where(eq(promotions.id, id));
     return true;
+  }
+
+  // Permissions
+  async getPermissions(tenantId?: string): Promise<Permission[]> {
+    if (tenantId) {
+      return db.select().from(permissions).where(eq(permissions.tenantId, tenantId)).orderBy(permissions.name);
+    }
+    return db.select().from(permissions).orderBy(permissions.name);
+  }
+
+  async createPermission(permission: InsertPermission): Promise<Permission> {
+    const [created] = await db.insert(permissions).values(permission).returning();
+    return created;
+  }
+
+  // Role Permissions
+  async getRolePermissions(roleId: string): Promise<RolePermission[]> {
+    return db.select().from(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+  }
+
+  async assignPermissionToRole(roleId: string, permissionId: string): Promise<RolePermission> {
+    const [created] = await db.insert(rolePermissions).values({ roleId, permissionId }).returning();
+    return created;
+  }
+
+  // User Roles
+  async getUserRoles(userId: string): Promise<UserRole[]> {
+    return db.select().from(userRoles).where(eq(userRoles.userId, userId));
+  }
+
+  async assignRoleToUser(userId: string, roleId: string, assignedBy?: string): Promise<UserRole> {
+    const [created] = await db.insert(userRoles).values({ userId, roleId, assignedBy }).returning();
+    return created;
+  }
+
+  async removeRoleFromUser(userId: string, roleId: string): Promise<boolean> {
+    await db.delete(userRoles).where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, roleId)));
+    return true;
+  }
+
+  // Notifications
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<Notification | undefined> {
+    const [updated] = await db.update(notifications).set({ isRead: true, readAt: new Date() }).where(eq(notifications.id, notificationId)).returning();
+    return updated;
+  }
+
+  // Activity Logs
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const [created] = await db.insert(activityLogs).values(log).returning();
+    return created;
+  }
+
+  async getActivityLogs(tenantId?: string, userId?: string): Promise<ActivityLog[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(activityLogs.tenantId, tenantId));
+    if (userId) conditions.push(eq(activityLogs.userId, userId));
+    if (conditions.length > 0) {
+      return db.select().from(activityLogs).where(and(...conditions)).orderBy(desc(activityLogs.createdAt)).limit(100);
+    }
+    return db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(100);
   }
 }
 

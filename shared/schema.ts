@@ -1190,6 +1190,81 @@ export const insertQualityControlSchema = createInsertSchema(qualityControls).om
 export type InsertQualityControl = z.infer<typeof insertQualityControlSchema>;
 export type QualityControl = typeof qualityControls.$inferSelect;
 
+// ============== PERMISSIONS & ROLES MANAGEMENT ==============
+export const permissions = pgTable("permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(), // user:create, user:read, user:update, user:delete, etc.
+  description: text("description"),
+  category: text("category").default("general"), // user, product, sales, purchase, production, warehouse, report
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true, createdAt: true });
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+export type Permission = typeof permissions.$inferSelect;
+
+export const rolePermissions = pgTable("role_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roleId: varchar("role_id").notNull().references(() => roles.id),
+  permissionId: varchar("permission_id").notNull().references(() => permissions.id),
+  grantedAt: timestamp("granted_at").defaultNow(),
+});
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true, grantedAt: true });
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+export const userRoles = pgTable("user_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  roleId: varchar("role_id").notNull().references(() => roles.id),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedBy: varchar("assigned_by").references(() => users.id),
+});
+
+export const insertUserRoleSchema = createInsertSchema(userRoles).omit({ id: true, assignedAt: true });
+export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
+export type UserRole = typeof userRoles.$inferSelect;
+
+// ============== NOTIFICATIONS ==============
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  userId: varchar("user_id").references(() => users.id),
+  type: text("type").notNull(), // alert, info, warning, error, success
+  title: text("title").notNull(),
+  message: text("message"),
+  data: jsonb("data").$type<Record<string, unknown>>().default({}),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, readAt: true });
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// ============== ACTIVITY LOGS ==============
+export const activityLogs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  userId: varchar("user_id").references(() => users.id),
+  action: text("action").notNull(), // create, read, update, delete, export, import, approve
+  entity: text("entity").notNull(), // user, product, sale, purchase, production, etc.
+  entityId: varchar("entity_id"),
+  description: text("description"),
+  changes: jsonb("changes").$type<Record<string, unknown>>().default({}),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+
 // ============== RELATIONS ==============
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
