@@ -116,7 +116,18 @@ Preferred communication style: Simple, everyday language.
 - date-fns for date manipulation
 - Timezone support configured for Morocco (Africa/Casablanca, GMT+1)
 
-## Next Steps (PHASE 2 - Planned)
+## PHASE 2 - Database Structure (IN PROGRESS)
+
+### Phase 2 Database Tables Added:
+1. **supplier_contacts** - Supplier contact management with multiple contacts per supplier
+2. **material_categories** - Raw materials categorization system
+3. **raw_materials** - Raw material master data for manufacturing
+4. **material_stock** - Inventory tracking for raw materials by warehouse
+5. **stock_adjustments** - Stock adjustment records with approval workflow
+
+All tables follow multi-tenant architecture with proper foreign key relationships and validation.
+
+## Next Steps (PHASE 3 - Planned)
 
 1. **Complete Authentication Integration**
    - Add authorization middleware to protect routes
@@ -133,7 +144,9 @@ Preferred communication style: Simple, everyday language.
 3. **Core Module Development**
    - Product management (Family > Category > Subcategory > Product)
    - Stock management with warehouse tracking
-   - Supplier management
+   - Supplier management with contacts
    - Customer management
    - Purchase order workflow
    - Sales order workflow
+   - Raw materials management
+   - Material stock operations

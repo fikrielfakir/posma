@@ -1265,6 +1265,95 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ i
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 
+// ============== SUPPLIER CONTACTS ==============
+export const supplierContacts = pgTable("supplier_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  name: text("name").notNull(),
+  title: text("title"),
+  email: text("email"),
+  phone: text("phone"),
+  mobile: text("mobile"),
+  isDefault: boolean("is_default").default(false),
+  notes: text("notes"),
+});
+
+export const insertSupplierContactSchema = createInsertSchema(supplierContacts).omit({ id: true });
+export type InsertSupplierContact = z.infer<typeof insertSupplierContactSchema>;
+export type SupplierContact = typeof supplierContacts.$inferSelect;
+
+// ============== MATERIAL CATEGORIES ==============
+export const materialCategories = pgTable("material_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  description: text("description"),
+  icon: text("icon"),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertMaterialCategorySchema = createInsertSchema(materialCategories).omit({ id: true });
+export type InsertMaterialCategory = z.infer<typeof insertMaterialCategorySchema>;
+export type MaterialCategory = typeof materialCategories.$inferSelect;
+
+// ============== RAW MATERIALS ==============
+export const rawMaterials = pgTable("raw_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  categoryId: varchar("category_id").references(() => materialCategories.id),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  sku: text("sku"),
+  unit: text("unit").default("kg"),
+  purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }).default("0"),
+  minStock: integer("min_stock").default(0),
+  reorderPoint: integer("reorder_point").default(10),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+});
+
+export const insertRawMaterialSchema = createInsertSchema(rawMaterials).omit({ id: true });
+export type InsertRawMaterial = z.infer<typeof insertRawMaterialSchema>;
+export type RawMaterial = typeof rawMaterials.$inferSelect;
+
+// ============== MATERIAL STOCK ==============
+export const materialStock = pgTable("material_stock", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  materialId: varchar("material_id").references(() => rawMaterials.id),
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).default("0"),
+  reservedQuantity: decimal("reserved_quantity", { precision: 12, scale: 3 }).default("0"),
+  averageCost: decimal("average_cost", { precision: 12, scale: 2 }).default("0"),
+  lastMovementDate: timestamp("last_movement_date"),
+});
+
+export const insertMaterialStockSchema = createInsertSchema(materialStock).omit({ id: true });
+export type InsertMaterialStock = z.infer<typeof insertMaterialStockSchema>;
+export type MaterialStock = typeof materialStock.$inferSelect;
+
+// ============== STOCK ADJUSTMENTS ==============
+export const stockAdjustments = pgTable("stock_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").references(() => tenants.id),
+  warehouseId: varchar("warehouse_id").references(() => warehouses.id),
+  reason: text("reason").notNull(),
+  notes: text("notes"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  status: text("status").default("pending"),
+  adjustmentDate: timestamp("adjustment_date").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertStockAdjustmentSchema = createInsertSchema(stockAdjustments).omit({ id: true, adjustmentDate: true, createdAt: true });
+export type InsertStockAdjustment = z.infer<typeof insertStockAdjustmentSchema>;
+export type StockAdjustment = typeof stockAdjustments.$inferSelect;
+
 // ============== RELATIONS ==============
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),

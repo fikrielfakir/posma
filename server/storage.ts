@@ -41,6 +41,11 @@ import {
   userRoles, type UserRole, type InsertUserRole,
   notifications, type Notification, type InsertNotification,
   activityLogs, type ActivityLog, type InsertActivityLog,
+  supplierContacts, type SupplierContact, type InsertSupplierContact,
+  materialCategories, type MaterialCategory, type InsertMaterialCategory,
+  rawMaterials, type RawMaterial, type InsertRawMaterial,
+  materialStock, type MaterialStock, type InsertMaterialStock,
+  stockAdjustments, type StockAdjustment, type InsertStockAdjustment,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -269,6 +274,39 @@ export interface IStorage {
   createPromotion(promotion: InsertPromotion): Promise<Promotion>;
   updatePromotion(id: string, promotion: Partial<InsertPromotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<boolean>;
+
+  // Supplier Contacts
+  getSupplierContacts(supplierId: string): Promise<SupplierContact[]>;
+  getSupplierContact(id: string): Promise<SupplierContact | undefined>;
+  createSupplierContact(contact: InsertSupplierContact): Promise<SupplierContact>;
+  updateSupplierContact(id: string, contact: Partial<InsertSupplierContact>): Promise<SupplierContact | undefined>;
+  deleteSupplierContact(id: string): Promise<boolean>;
+
+  // Material Categories
+  getMaterialCategories(tenantId?: string): Promise<MaterialCategory[]>;
+  getMaterialCategory(id: string): Promise<MaterialCategory | undefined>;
+  createMaterialCategory(category: InsertMaterialCategory): Promise<MaterialCategory>;
+  updateMaterialCategory(id: string, category: Partial<InsertMaterialCategory>): Promise<MaterialCategory | undefined>;
+  deleteMaterialCategory(id: string): Promise<boolean>;
+
+  // Raw Materials
+  getRawMaterials(tenantId?: string, categoryId?: string): Promise<RawMaterial[]>;
+  getRawMaterial(id: string): Promise<RawMaterial | undefined>;
+  createRawMaterial(material: InsertRawMaterial): Promise<RawMaterial>;
+  updateRawMaterial(id: string, material: Partial<InsertRawMaterial>): Promise<RawMaterial | undefined>;
+  deleteRawMaterial(id: string): Promise<boolean>;
+
+  // Material Stock
+  getMaterialStock(tenantId?: string, warehouseId?: string): Promise<MaterialStock[]>;
+  getMaterialStockByMaterial(materialId: string, warehouseId?: string): Promise<MaterialStock[]>;
+  upsertMaterialStock(stockData: InsertMaterialStock): Promise<MaterialStock>;
+  updateMaterialStock(id: string, stockData: Partial<InsertMaterialStock>): Promise<MaterialStock | undefined>;
+
+  // Stock Adjustments
+  getStockAdjustments(tenantId?: string, warehouseId?: string): Promise<StockAdjustment[]>;
+  getStockAdjustment(id: string): Promise<StockAdjustment | undefined>;
+  createStockAdjustment(adjustment: InsertStockAdjustment): Promise<StockAdjustment>;
+  updateStockAdjustment(id: string, adjustment: Partial<InsertStockAdjustment>): Promise<StockAdjustment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
