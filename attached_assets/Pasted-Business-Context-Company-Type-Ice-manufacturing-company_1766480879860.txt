@@ -1,0 +1,99 @@
+Business Context
+Company Type: Ice manufacturing company with import/export operations, equipment trading, general commerce, ice production and distribution
+Core Requirements
+1. User Management & Authentication
+
+Multi-role access (Admin, Manager, Operator, Sales, Warehouse)
+Secure login with JWT tokens
+Role-based permissions (RBAC)
+User activity logging
+
+2. Stock Management Module
+Raw Materials Inventory
+
+Track raw materials for ice production (water treatment chemicals, packaging materials, etc.)
+Real-time stock levels with min/max thresholds
+Automatic low-stock alerts
+Batch/lot tracking for traceability
+Supplier management
+
+Finished Goods Inventory
+
+Ice products tracking (different sizes: cubes, blocks, crushed)
+Packaging materials (bags, containers)
+Storage location management (freezers, cold rooms)
+Temperature monitoring integration
+FIFO/FEFO inventory rotation
+
+Equipment & Trading Goods
+
+Import/export equipment catalog
+Equipment for sale/resale inventory
+Serial number tracking
+Warranty and maintenance records
+
+3. Production Management Module
+Production Planning
+
+Daily/weekly production schedules
+Capacity planning based on equipment
+Resource allocation (machines, labor, materials)
+Production orders with priority levels
+
+Production Execution
+
+Real-time production tracking
+Batch production records
+Quality control checkpoints
+Waste/loss tracking
+Equipment downtime monitoring
+Energy consumption tracking (electricity, water)
+
+Production Output
+
+Automatic stock updates on completion
+Quality inspection records
+Yield calculations
+Production reports and analytics
+
+4. Sales & Distribution Module
+
+Customer order management
+Delivery scheduling and routing
+Invoice generation
+Payment tracking
+Customer credit management
+Delivery note generation
+
+5. Purchase & Import Management
+
+Purchase orders for raw materials
+Supplier management
+Import documentation tracking
+Customs clearance status
+Cost tracking (FOB, CIF, duties)
+
+6. Warehouse Management
+
+Multiple warehouse/location support
+Zone management (frozen, ambient)
+Stock transfer between locations
+Loading/unloading operations
+Vehicle capacity planning
+
+7. Reporting & Analytics
+
+Production efficiency reports
+Stock movement reports
+Sales reports (by product, customer, region)
+Profitability analysis
+Inventory valuation
+Custom dashboard with KPIs
+
+8. Quality Control
+
+Ice quality parameters (clarity, hardness, purity)
+Lab test results tracking
+Non-conformity management
+Corrective action tracking
+

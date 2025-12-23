@@ -1,0 +1,211 @@
+API Endpoints Structure
+Authentication & Users
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/refresh-token
+GET    /api/users
+POST   /api/users
+GET    /api/users/:id
+PUT    /api/users/:id
+DELETE /api/users/:id
+GET    /api/users/:id/permissions
+Stock Management
+Raw Materials
+GET    /api/stock/raw-materials
+POST   /api/stock/raw-materials
+GET    /api/stock/raw-materials/:id
+PUT    /api/stock/raw-materials/:id
+DELETE /api/stock/raw-materials/:id
+POST   /api/stock/raw-materials/:id/adjust
+GET    /api/stock/raw-materials/:id/movements
+GET    /api/stock/raw-materials/low-stock
+Finished Products (Ice)
+GET    /api/stock/products
+POST   /api/stock/products
+GET    /api/stock/products/:id
+PUT    /api/stock/products/:id
+DELETE /api/stock/products/:id
+POST   /api/stock/products/:id/adjust
+GET    /api/stock/products/:id/movements
+GET    /api/stock/products/inventory-status
+Equipment Inventory
+GET    /api/stock/equipment
+POST   /api/stock/equipment
+GET    /api/stock/equipment/:id
+PUT    /api/stock/equipment/:id
+DELETE /api/stock/equipment/:id
+GET    /api/stock/equipment/:id/maintenance-history
+Production Management
+Production Orders
+GET    /api/production/orders
+POST   /api/production/orders
+GET    /api/production/orders/:id
+PUT    /api/production/orders/:id
+DELETE /api/production/orders/:id
+POST   /api/production/orders/:id/start
+POST   /api/production/orders/:id/complete
+POST   /api/production/orders/:id/cancel
+GET    /api/production/orders/:id/materials
+GET    /api/production/orders/:id/outputs
+Production Schedule
+GET    /api/production/schedule
+POST   /api/production/schedule
+PUT    /api/production/schedule/:id
+GET    /api/production/schedule/daily/:date
+GET    /api/production/schedule/capacity
+Production Batches
+GET    /api/production/batches
+POST   /api/production/batches
+GET    /api/production/batches/:id
+PUT    /api/production/batches/:id
+GET    /api/production/batches/:id/quality-checks
+POST   /api/production/batches/:id/quality-checks
+Machines & Equipment
+GET    /api/production/machines
+POST   /api/production/machines
+GET    /api/production/machines/:id
+PUT    /api/production/machines/:id
+GET    /api/production/machines/:id/downtime
+POST   /api/production/machines/:id/downtime
+GET    /api/production/machines/:id/performance
+Sales & Distribution
+Orders
+GET    /api/sales/orders
+POST   /api/sales/orders
+GET    /api/sales/orders/:id
+PUT    /api/sales/orders/:id
+DELETE /api/sales/orders/:id
+POST   /api/sales/orders/:id/confirm
+POST   /api/sales/orders/:id/invoice
+GET    /api/sales/orders/:id/delivery
+Customers
+GET    /api/sales/customers
+POST   /api/sales/customers
+GET    /api/sales/customers/:id
+PUT    /api/sales/customers/:id
+DELETE /api/sales/customers/:id
+GET    /api/sales/customers/:id/orders
+GET    /api/sales/customers/:id/credit-status
+Deliveries
+GET    /api/sales/deliveries
+POST   /api/sales/deliveries
+GET    /api/sales/deliveries/:id
+PUT    /api/sales/deliveries/:id
+POST   /api/sales/deliveries/:id/complete
+GET    /api/sales/deliveries/routes/:date
+Invoices
+GET    /api/sales/invoices
+POST   /api/sales/invoices
+GET    /api/sales/invoices/:id
+PUT    /api/sales/invoices/:id
+POST   /api/sales/invoices/:id/payment
+GET    /api/sales/invoices/pending
+Purchasing & Import
+Purchase Orders
+GET    /api/purchasing/orders
+POST   /api/purchasing/orders
+GET    /api/purchasing/orders/:id
+PUT    /api/purchasing/orders/:id
+DELETE /api/purchasing/orders/:id
+POST   /api/purchasing/orders/:id/approve
+POST   /api/purchasing/orders/:id/receive
+Suppliers
+GET    /api/purchasing/suppliers
+POST   /api/purchasing/suppliers
+GET    /api/purchasing/suppliers/:id
+PUT    /api/purchasing/suppliers/:id
+DELETE /api/purchasing/suppliers/:id
+GET    /api/purchasing/suppliers/:id/orders
+GET    /api/purchasing/suppliers/:id/performance
+Import Operations
+GET    /api/purchasing/imports
+POST   /api/purchasing/imports
+GET    /api/purchasing/imports/:id
+PUT    /api/purchasing/imports/:id
+POST   /api/purchasing/imports/:id/documents
+GET    /api/purchasing/imports/:id/customs-status
+PUT    /api/purchasing/imports/:id/costs
+Warehouse Operations
+Warehouses
+GET    /api/warehouse/locations
+POST   /api/warehouse/locations
+GET    /api/warehouse/locations/:id
+PUT    /api/warehouse/locations/:id
+GET    /api/warehouse/locations/:id/inventory
+GET    /api/warehouse/locations/:id/capacity
+Stock Transfers
+GET    /api/warehouse/transfers
+POST   /api/warehouse/transfers
+GET    /api/warehouse/transfers/:id
+PUT    /api/warehouse/transfers/:id
+POST   /api/warehouse/transfers/:id/confirm
+POST   /api/warehouse/transfers/:id/receive
+Stock Adjustments
+GET    /api/warehouse/adjustments
+POST   /api/warehouse/adjustments
+GET    /api/warehouse/adjustments/:id
+POST   /api/warehouse/adjustments/:id/approve
+Quality Control
+GET    /api/quality/inspections
+POST   /api/quality/inspections
+GET    /api/quality/inspections/:id
+PUT    /api/quality/inspections/:id
+POST   /api/quality/inspections/:id/approve
+POST   /api/quality/inspections/:id/reject
+GET    /api/quality/parameters
+GET    /api/quality/non-conformities
+POST   /api/quality/non-conformities
+Reports & Analytics
+GET    /api/reports/production-summary
+GET    /api/reports/production/:startDate/:endDate
+GET    /api/reports/inventory-valuation
+GET    /api/reports/sales-summary
+GET    /api/reports/sales/:startDate/:endDate
+GET    /api/reports/stock-movement/:productId
+GET    /api/reports/profitability
+GET    /api/reports/machine-efficiency
+GET    /api/reports/custom
+POST   /api/reports/export
+Dashboard & KPIs
+GET    /api/dashboard/overview
+GET    /api/dashboard/production-kpis
+GET    /api/dashboard/inventory-status
+GET    /api/dashboard/sales-metrics
+GET    /api/dashboard/alerts
+GET    /api/dashboard/recent-activities
+Notifications
+GET    /api/notifications
+PUT    /api/notifications/:id/read
+PUT    /api/notifications/read-all
+DELETE /api/notifications/:id
+GET    /api/notifications/settings
+PUT    /api/notifications/settings
+
+Additional Features
+Integration Requirements
+
+Accounting software integration (export journal entries)
+Temperature monitoring systems (IoT sensors)
+Vehicle GPS tracking (delivery fleet)
+SMS/Email notifications (order status, alerts)
+Barcode/QR code scanning (mobile app)
+Payment gateway integration (online payments)
+
+Security Requirements
+
+SSL/TLS encryption
+API rate limiting
+Input validation and sanitization
+SQL injection prevention
+XSS protection
+Regular security audits
+Data backup and recovery
+GDPR compliance (if applicable)
+
+Performance Requirements
+
+API response time < 500ms
+Support 100+ concurrent users
+Real-time stock updates
+Mobile-optimized APIs
+Offline mode support for field operations
