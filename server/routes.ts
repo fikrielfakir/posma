@@ -37,6 +37,17 @@ import {
   insertPaymentSchema,
   insertInvoiceSchema,
   insertPromotionSchema,
+  insertProductionMachineSchema,
+  insertMachineMaintenanceSchema,
+  insertBillOfMaterialSchema,
+  insertBillMaterialSchema,
+  insertProductionPlanSchema,
+  insertProductionOrderSchema,
+  insertProductionBatchSchema,
+  insertBatchMaterialSchema,
+  insertBatchOutputSchema,
+  insertQualityControlSchema,
+  insertQualityParameterSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1925,6 +1936,181 @@ export async function registerRoutes(
       console.error("Daily revenue error:", error);
       res.status(500).json({ error: "Failed to fetch daily revenue" });
     }
+  });
+
+  // ============== PRODUCTION MACHINES ==============
+  app.get("/api/production/machines", async (req, res) => {
+    const machines = await storage.getProductionMachines(req.query.tenantId as string);
+    res.json(machines);
+  });
+
+  app.get("/api/production/machines/:id", async (req, res) => {
+    const machine = await storage.getProductionMachine(req.params.id);
+    if (!machine) return res.status(404).json({ error: "Machine not found" });
+    res.json(machine);
+  });
+
+  app.post("/api/production/machines", async (req, res) => {
+    const data = insertProductionMachineSchema.parse(req.body);
+    const machine = await storage.createProductionMachine(data);
+    res.status(201).json(machine);
+  });
+
+  app.patch("/api/production/machines/:id", async (req, res) => {
+    const data = insertProductionMachineSchema.partial().parse(req.body);
+    const machine = await storage.updateProductionMachine(req.params.id, data);
+    if (!machine) return res.status(404).json({ error: "Machine not found" });
+    res.json(machine);
+  });
+
+  // ============== PRODUCTION PLANS ==============
+  app.get("/api/production/plans", async (req, res) => {
+    const plans = await storage.getProductionPlans(req.query.tenantId as string, req.query.status as string);
+    res.json(plans);
+  });
+
+  app.post("/api/production/plans", async (req, res) => {
+    const data = insertProductionPlanSchema.parse(req.body);
+    const plan = await storage.createProductionPlan(data);
+    res.status(201).json(plan);
+  });
+
+  app.get("/api/production/plans/:id", async (req, res) => {
+    const plan = await storage.getProductionPlan(req.params.id);
+    if (!plan) return res.status(404).json({ error: "Plan not found" });
+    res.json(plan);
+  });
+
+  app.patch("/api/production/plans/:id", async (req, res) => {
+    const data = insertProductionPlanSchema.partial().parse(req.body);
+    const plan = await storage.updateProductionPlan(req.params.id, data);
+    if (!plan) return res.status(404).json({ error: "Plan not found" });
+    res.json(plan);
+  });
+
+  // ============== PRODUCTION ORDERS ==============
+  app.get("/api/production/orders", async (req, res) => {
+    const orders = await storage.getProductionOrders(req.query.tenantId as string, req.query.status as string);
+    res.json(orders);
+  });
+
+  app.post("/api/production/orders", async (req, res) => {
+    const data = insertProductionOrderSchema.parse(req.body);
+    const order = await storage.createProductionOrder(data);
+    res.status(201).json(order);
+  });
+
+  app.get("/api/production/orders/:id", async (req, res) => {
+    const order = await storage.getProductionOrder(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  });
+
+  app.patch("/api/production/orders/:id", async (req, res) => {
+    const data = insertProductionOrderSchema.partial().parse(req.body);
+    const order = await storage.updateProductionOrder(req.params.id, data);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  });
+
+  // ============== PRODUCTION BATCHES ==============
+  app.get("/api/production/batches", async (req, res) => {
+    const batches = await storage.getProductionBatches(req.query.tenantId as string, req.query.orderId as string);
+    res.json(batches);
+  });
+
+  app.post("/api/production/batches", async (req, res) => {
+    const data = insertProductionBatchSchema.parse(req.body);
+    const batch = await storage.createProductionBatch(data);
+    res.status(201).json(batch);
+  });
+
+  app.get("/api/production/batches/:id", async (req, res) => {
+    const batch = await storage.getProductionBatch(req.params.id);
+    if (!batch) return res.status(404).json({ error: "Batch not found" });
+    res.json(batch);
+  });
+
+  app.patch("/api/production/batches/:id", async (req, res) => {
+    const data = insertProductionBatchSchema.partial().parse(req.body);
+    const batch = await storage.updateProductionBatch(req.params.id, data);
+    if (!batch) return res.status(404).json({ error: "Batch not found" });
+    res.json(batch);
+  });
+
+  // ============== QUALITY CHECKS ==============
+  app.get("/api/quality/checks", async (req, res) => {
+    const controls = await storage.getQualityControls(req.query.tenantId as string, req.query.batchId as string);
+    res.json(controls);
+  });
+
+  app.post("/api/quality/checks", async (req, res) => {
+    const data = insertQualityControlSchema.parse(req.body);
+    const control = await storage.createQualityControl(data);
+    res.status(201).json(control);
+  });
+
+  app.get("/api/quality/checks/:id", async (req, res) => {
+    const control = await storage.getQualityControl(req.params.id);
+    if (!control) return res.status(404).json({ error: "Quality check not found" });
+    res.json(control);
+  });
+
+  app.patch("/api/quality/checks/:id", async (req, res) => {
+    const data = insertQualityControlSchema.partial().parse(req.body);
+    const control = await storage.updateQualityControl(req.params.id, data);
+    if (!control) return res.status(404).json({ error: "Quality check not found" });
+    res.json(control);
+  });
+
+  // ============== QUALITY PARAMETERS ==============
+  app.get("/api/quality/parameters", async (req, res) => {
+    const params = await storage.getQualityParameters(req.query.tenantId as string);
+    res.json(params);
+  });
+
+  app.post("/api/quality/parameters", async (req, res) => {
+    const data = insertQualityParameterSchema.parse(req.body);
+    const param = await storage.createQualityParameter(data);
+    res.status(201).json(param);
+  });
+
+  app.get("/api/quality/parameters/:id", async (req, res) => {
+    const param = await storage.getQualityParameter(req.params.id);
+    if (!param) return res.status(404).json({ error: "Quality parameter not found" });
+    res.json(param);
+  });
+
+  app.patch("/api/quality/parameters/:id", async (req, res) => {
+    const data = insertQualityParameterSchema.partial().parse(req.body);
+    const param = await storage.updateQualityParameter(req.params.id, data);
+    if (!param) return res.status(404).json({ error: "Quality parameter not found" });
+    res.json(param);
+  });
+
+  // ============== BILLS OF MATERIAL ==============
+  app.get("/api/bills-of-material", async (req, res) => {
+    const bills = await storage.getBillsOfMaterial(req.query.tenantId as string, req.query.productId as string);
+    res.json(bills);
+  });
+
+  app.post("/api/bills-of-material", async (req, res) => {
+    const data = insertBillOfMaterialSchema.parse(req.body);
+    const bill = await storage.createBillOfMaterial(data);
+    res.status(201).json(bill);
+  });
+
+  app.get("/api/bills-of-material/:id", async (req, res) => {
+    const bill = await storage.getBillOfMaterial(req.params.id);
+    if (!bill) return res.status(404).json({ error: "Bill of material not found" });
+    res.json(bill);
+  });
+
+  app.patch("/api/bills-of-material/:id", async (req, res) => {
+    const data = insertBillOfMaterialSchema.partial().parse(req.body);
+    const bill = await storage.updateBillOfMaterial(req.params.id, data);
+    if (!bill) return res.status(404).json({ error: "Bill of material not found" });
+    res.json(bill);
   });
 
   return httpServer;

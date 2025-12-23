@@ -46,6 +46,17 @@ import {
   rawMaterials, type RawMaterial, type InsertRawMaterial,
   materialStock, type MaterialStock, type InsertMaterialStock,
   stockAdjustments, type StockAdjustment, type InsertStockAdjustment,
+  productionMachines, type ProductionMachine, type InsertProductionMachine,
+  machineMaintenance, type MachineMaintenance, type InsertMachineMaintenance,
+  billsOfMaterial, type BillOfMaterial, type InsertBillOfMaterial,
+  billMaterials, type BillMaterial, type InsertBillMaterial,
+  productionPlans, type ProductionPlan, type InsertProductionPlan,
+  productionOrders, type ProductionOrder, type InsertProductionOrder,
+  productionBatches, type ProductionBatch, type InsertProductionBatch,
+  batchMaterials, type BatchMaterial, type InsertBatchMaterial,
+  batchOutputs, type BatchOutput, type InsertBatchOutput,
+  qualityControls, type QualityControl, type InsertQualityControl,
+  qualityParameters, type QualityParameter, type InsertQualityParameter,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -307,6 +318,70 @@ export interface IStorage {
   getStockAdjustment(id: string): Promise<StockAdjustment | undefined>;
   createStockAdjustment(adjustment: InsertStockAdjustment): Promise<StockAdjustment>;
   updateStockAdjustment(id: string, adjustment: Partial<InsertStockAdjustment>): Promise<StockAdjustment | undefined>;
+
+  // Production Machines
+  getProductionMachines(tenantId?: string): Promise<ProductionMachine[]>;
+  getProductionMachine(id: string): Promise<ProductionMachine | undefined>;
+  createProductionMachine(machine: InsertProductionMachine): Promise<ProductionMachine>;
+  updateProductionMachine(id: string, machine: Partial<InsertProductionMachine>): Promise<ProductionMachine | undefined>;
+  deleteProductionMachine(id: string): Promise<boolean>;
+
+  // Machine Maintenance
+  getMachineMaintenance(machineId?: string): Promise<MachineMaintenance[]>;
+  getMaintenanceRecord(id: string): Promise<MachineMaintenance | undefined>;
+  createMaintenanceRecord(record: InsertMachineMaintenance): Promise<MachineMaintenance>;
+  updateMaintenanceRecord(id: string, record: Partial<InsertMachineMaintenance>): Promise<MachineMaintenance | undefined>;
+
+  // Bills of Material
+  getBillsOfMaterial(tenantId?: string, productId?: string): Promise<BillOfMaterial[]>;
+  getBillOfMaterial(id: string): Promise<BillOfMaterial | undefined>;
+  createBillOfMaterial(bill: InsertBillOfMaterial): Promise<BillOfMaterial>;
+  updateBillOfMaterial(id: string, bill: Partial<InsertBillOfMaterial>): Promise<BillOfMaterial | undefined>;
+
+  // Bill Materials
+  getBillMaterials(billId: string): Promise<BillMaterial[]>;
+  createBillMaterial(material: InsertBillMaterial): Promise<BillMaterial>;
+  updateBillMaterial(id: string, material: Partial<InsertBillMaterial>): Promise<BillMaterial | undefined>;
+
+  // Production Plans
+  getProductionPlans(tenantId?: string, status?: string): Promise<ProductionPlan[]>;
+  getProductionPlan(id: string): Promise<ProductionPlan | undefined>;
+  createProductionPlan(plan: InsertProductionPlan): Promise<ProductionPlan>;
+  updateProductionPlan(id: string, plan: Partial<InsertProductionPlan>): Promise<ProductionPlan | undefined>;
+
+  // Production Orders
+  getProductionOrders(tenantId?: string, status?: string): Promise<ProductionOrder[]>;
+  getProductionOrder(id: string): Promise<ProductionOrder | undefined>;
+  createProductionOrder(order: InsertProductionOrder): Promise<ProductionOrder>;
+  updateProductionOrder(id: string, order: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined>;
+
+  // Production Batches
+  getProductionBatches(tenantId?: string, orderId?: string): Promise<ProductionBatch[]>;
+  getProductionBatch(id: string): Promise<ProductionBatch | undefined>;
+  createProductionBatch(batch: InsertProductionBatch): Promise<ProductionBatch>;
+  updateProductionBatch(id: string, batch: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined>;
+
+  // Batch Materials
+  getBatchMaterials(batchId: string): Promise<BatchMaterial[]>;
+  createBatchMaterial(material: InsertBatchMaterial): Promise<BatchMaterial>;
+  updateBatchMaterial(id: string, material: Partial<InsertBatchMaterial>): Promise<BatchMaterial | undefined>;
+
+  // Batch Outputs
+  getBatchOutputs(batchId: string): Promise<BatchOutput[]>;
+  createBatchOutput(output: InsertBatchOutput): Promise<BatchOutput>;
+  updateBatchOutput(id: string, output: Partial<InsertBatchOutput>): Promise<BatchOutput | undefined>;
+
+  // Quality Controls
+  getQualityControls(tenantId?: string, batchId?: string): Promise<QualityControl[]>;
+  getQualityControl(id: string): Promise<QualityControl | undefined>;
+  createQualityControl(control: InsertQualityControl): Promise<QualityControl>;
+  updateQualityControl(id: string, control: Partial<InsertQualityControl>): Promise<QualityControl | undefined>;
+
+  // Quality Parameters
+  getQualityParameters(tenantId?: string): Promise<QualityParameter[]>;
+  getQualityParameter(id: string): Promise<QualityParameter | undefined>;
+  createQualityParameter(param: InsertQualityParameter): Promise<QualityParameter>;
+  updateQualityParameter(id: string, param: Partial<InsertQualityParameter>): Promise<QualityParameter | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1417,6 +1492,239 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(activityLogs).where(and(...conditions)).orderBy(desc(activityLogs.createdAt)).limit(100);
     }
     return db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(100);
+  }
+
+  // Production Machines
+  async getProductionMachines(tenantId?: string): Promise<ProductionMachine[]> {
+    if (tenantId) return db.select().from(productionMachines).where(eq(productionMachines.tenantId, tenantId)).orderBy(productionMachines.name);
+    return db.select().from(productionMachines).orderBy(productionMachines.name);
+  }
+
+  async getProductionMachine(id: string): Promise<ProductionMachine | undefined> {
+    const [machine] = await db.select().from(productionMachines).where(eq(productionMachines.id, id));
+    return machine;
+  }
+
+  async createProductionMachine(machine: InsertProductionMachine): Promise<ProductionMachine> {
+    const [created] = await db.insert(productionMachines).values(machine).returning();
+    return created;
+  }
+
+  async updateProductionMachine(id: string, machine: Partial<InsertProductionMachine>): Promise<ProductionMachine | undefined> {
+    const [updated] = await db.update(productionMachines).set(machine).where(eq(productionMachines.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProductionMachine(id: string): Promise<boolean> {
+    await db.delete(productionMachines).where(eq(productionMachines.id, id));
+    return true;
+  }
+
+  // Machine Maintenance
+  async getMachineMaintenance(machineId?: string): Promise<MachineMaintenance[]> {
+    if (machineId) return db.select().from(machineMaintenance).where(eq(machineMaintenance.machineId, machineId));
+    return db.select().from(machineMaintenance).orderBy(desc(machineMaintenance.startDate));
+  }
+
+  async getMaintenanceRecord(id: string): Promise<MachineMaintenance | undefined> {
+    const [record] = await db.select().from(machineMaintenance).where(eq(machineMaintenance.id, id));
+    return record;
+  }
+
+  async createMaintenanceRecord(record: InsertMachineMaintenance): Promise<MachineMaintenance> {
+    const [created] = await db.insert(machineMaintenance).values(record).returning();
+    return created;
+  }
+
+  async updateMaintenanceRecord(id: string, record: Partial<InsertMachineMaintenance>): Promise<MachineMaintenance | undefined> {
+    const [updated] = await db.update(machineMaintenance).set(record).where(eq(machineMaintenance.id, id)).returning();
+    return updated;
+  }
+
+  // Bills of Material
+  async getBillsOfMaterial(tenantId?: string, productId?: string): Promise<BillOfMaterial[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(billsOfMaterial.tenantId, tenantId));
+    if (productId) conditions.push(eq(billsOfMaterial.productId, productId));
+    if (conditions.length > 0) return db.select().from(billsOfMaterial).where(and(...conditions));
+    return db.select().from(billsOfMaterial);
+  }
+
+  async getBillOfMaterial(id: string): Promise<BillOfMaterial | undefined> {
+    const [bill] = await db.select().from(billsOfMaterial).where(eq(billsOfMaterial.id, id));
+    return bill;
+  }
+
+  async createBillOfMaterial(bill: InsertBillOfMaterial): Promise<BillOfMaterial> {
+    const [created] = await db.insert(billsOfMaterial).values(bill).returning();
+    return created;
+  }
+
+  async updateBillOfMaterial(id: string, bill: Partial<InsertBillOfMaterial>): Promise<BillOfMaterial | undefined> {
+    const [updated] = await db.update(billsOfMaterial).set(bill).where(eq(billsOfMaterial.id, id)).returning();
+    return updated;
+  }
+
+  // Bill Materials
+  async getBillMaterials(billId: string): Promise<BillMaterial[]> {
+    return db.select().from(billMaterials).where(eq(billMaterials.billId, billId));
+  }
+
+  async createBillMaterial(material: InsertBillMaterial): Promise<BillMaterial> {
+    const [created] = await db.insert(billMaterials).values(material).returning();
+    return created;
+  }
+
+  async updateBillMaterial(id: string, material: Partial<InsertBillMaterial>): Promise<BillMaterial | undefined> {
+    const [updated] = await db.update(billMaterials).set(material).where(eq(billMaterials.id, id)).returning();
+    return updated;
+  }
+
+  // Production Plans
+  async getProductionPlans(tenantId?: string, status?: string): Promise<ProductionPlan[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(productionPlans.tenantId, tenantId));
+    if (status) conditions.push(eq(productionPlans.status, status));
+    if (conditions.length > 0) return db.select().from(productionPlans).where(and(...conditions)).orderBy(desc(productionPlans.startDate));
+    return db.select().from(productionPlans).orderBy(desc(productionPlans.startDate));
+  }
+
+  async getProductionPlan(id: string): Promise<ProductionPlan | undefined> {
+    const [plan] = await db.select().from(productionPlans).where(eq(productionPlans.id, id));
+    return plan;
+  }
+
+  async createProductionPlan(plan: InsertProductionPlan): Promise<ProductionPlan> {
+    const [created] = await db.insert(productionPlans).values(plan).returning();
+    return created;
+  }
+
+  async updateProductionPlan(id: string, plan: Partial<InsertProductionPlan>): Promise<ProductionPlan | undefined> {
+    const [updated] = await db.update(productionPlans).set(plan).where(eq(productionPlans.id, id)).returning();
+    return updated;
+  }
+
+  // Production Orders
+  async getProductionOrders(tenantId?: string, status?: string): Promise<ProductionOrder[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(productionOrders.tenantId, tenantId));
+    if (status) conditions.push(eq(productionOrders.status, status));
+    if (conditions.length > 0) return db.select().from(productionOrders).where(and(...conditions)).orderBy(desc(productionOrders.createdAt));
+    return db.select().from(productionOrders).orderBy(desc(productionOrders.createdAt));
+  }
+
+  async getProductionOrder(id: string): Promise<ProductionOrder | undefined> {
+    const [order] = await db.select().from(productionOrders).where(eq(productionOrders.id, id));
+    return order;
+  }
+
+  async createProductionOrder(order: InsertProductionOrder): Promise<ProductionOrder> {
+    const [created] = await db.insert(productionOrders).values(order).returning();
+    return created;
+  }
+
+  async updateProductionOrder(id: string, order: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined> {
+    const [updated] = await db.update(productionOrders).set(order).where(eq(productionOrders.id, id)).returning();
+    return updated;
+  }
+
+  // Production Batches
+  async getProductionBatches(tenantId?: string, orderId?: string): Promise<ProductionBatch[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(productionBatches.tenantId, tenantId));
+    if (orderId) conditions.push(eq(productionBatches.productionOrderId, orderId));
+    if (conditions.length > 0) return db.select().from(productionBatches).where(and(...conditions)).orderBy(desc(productionBatches.createdAt));
+    return db.select().from(productionBatches).orderBy(desc(productionBatches.createdAt));
+  }
+
+  async getProductionBatch(id: string): Promise<ProductionBatch | undefined> {
+    const [batch] = await db.select().from(productionBatches).where(eq(productionBatches.id, id));
+    return batch;
+  }
+
+  async createProductionBatch(batch: InsertProductionBatch): Promise<ProductionBatch> {
+    const [created] = await db.insert(productionBatches).values(batch).returning();
+    return created;
+  }
+
+  async updateProductionBatch(id: string, batch: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined> {
+    const [updated] = await db.update(productionBatches).set(batch).where(eq(productionBatches.id, id)).returning();
+    return updated;
+  }
+
+  // Batch Materials
+  async getBatchMaterials(batchId: string): Promise<BatchMaterial[]> {
+    return db.select().from(batchMaterials).where(eq(batchMaterials.batchId, batchId));
+  }
+
+  async createBatchMaterial(material: InsertBatchMaterial): Promise<BatchMaterial> {
+    const [created] = await db.insert(batchMaterials).values(material).returning();
+    return created;
+  }
+
+  async updateBatchMaterial(id: string, material: Partial<InsertBatchMaterial>): Promise<BatchMaterial | undefined> {
+    const [updated] = await db.update(batchMaterials).set(material).where(eq(batchMaterials.id, id)).returning();
+    return updated;
+  }
+
+  // Batch Outputs
+  async getBatchOutputs(batchId: string): Promise<BatchOutput[]> {
+    return db.select().from(batchOutputs).where(eq(batchOutputs.batchId, batchId));
+  }
+
+  async createBatchOutput(output: InsertBatchOutput): Promise<BatchOutput> {
+    const [created] = await db.insert(batchOutputs).values(output).returning();
+    return created;
+  }
+
+  async updateBatchOutput(id: string, output: Partial<InsertBatchOutput>): Promise<BatchOutput | undefined> {
+    const [updated] = await db.update(batchOutputs).set(output).where(eq(batchOutputs.id, id)).returning();
+    return updated;
+  }
+
+  // Quality Controls
+  async getQualityControls(tenantId?: string, batchId?: string): Promise<QualityControl[]> {
+    const conditions = [];
+    if (tenantId) conditions.push(eq(qualityControls.tenantId, tenantId));
+    if (batchId) conditions.push(eq(qualityControls.productionBatchId, batchId));
+    if (conditions.length > 0) return db.select().from(qualityControls).where(and(...conditions));
+    return db.select().from(qualityControls);
+  }
+
+  async getQualityControl(id: string): Promise<QualityControl | undefined> {
+    const [control] = await db.select().from(qualityControls).where(eq(qualityControls.id, id));
+    return control;
+  }
+
+  async createQualityControl(control: InsertQualityControl): Promise<QualityControl> {
+    const [created] = await db.insert(qualityControls).values(control).returning();
+    return created;
+  }
+
+  async updateQualityControl(id: string, control: Partial<InsertQualityControl>): Promise<QualityControl | undefined> {
+    const [updated] = await db.update(qualityControls).set(control).where(eq(qualityControls.id, id)).returning();
+    return updated;
+  }
+
+  // Quality Parameters
+  async getQualityParameters(tenantId?: string): Promise<QualityParameter[]> {
+    if (tenantId) return db.select().from(qualityParameters).where(eq(qualityParameters.tenantId, tenantId));
+    return db.select().from(qualityParameters);
+  }
+
+  async getQualityParameter(id: string): Promise<QualityParameter | undefined> {
+    const [param] = await db.select().from(qualityParameters).where(eq(qualityParameters.id, id));
+    return param;
+  }
+
+  async createQualityParameter(param: InsertQualityParameter): Promise<QualityParameter> {
+    const [created] = await db.insert(qualityParameters).values(param).returning();
+    return created;
+  }
+
+  async updateQualityParameter(id: string, param: Partial<InsertQualityParameter>): Promise<QualityParameter | undefined> {
+    const [updated] = await db.update(qualityParameters).set(param).where(eq(qualityParameters.id, id)).returning();
+    return updated;
   }
 }
 
