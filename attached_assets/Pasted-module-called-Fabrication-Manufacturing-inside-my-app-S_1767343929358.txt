@@ -1,0 +1,213 @@
+module called Fabrication (Manufacturing) inside my app StockFlow ERP, a multi-tenant ERP system for Moroccan businesses.
+The system uses React + TypeScript (frontend) and Node.js + Express + Drizzle ORM + PostgreSQL (backend), with strict tenant isolation, role-based permissions, and Moroccan fiscal compliance.
+
+The Fabrication module must integrate smoothly with:
+
+Stock & Warehouses
+
+Raw Materials
+
+Finished Products
+
+Reports & Analytics
+
+User permissions (RBAC)
+
+🎯 Goal of the Module
+
+Create a Fabrication / Production Management module that allows companies to:
+
+Define product recipes (Bill of Materials)
+
+Plan and execute production
+
+Automatically consume raw materials
+
+Generate finished products into stock
+
+Track costs, losses, and performance
+
+Generate clear fabrication reports
+
+🧩 Module Structure
+1️⃣ Recette (Bill of Materials – BOM)
+
+Design a Recette system that:
+
+Links Finished Product → Raw Materials
+
+Defines quantity per unit
+
+Supports unit conversion (kg, g, unit, liter)
+
+Supports versioning (recipe updates)
+
+Is tenant-specific
+
+Key fields
+
+id
+
+tenantId
+
+productId (finished product)
+
+version
+
+status (draft / active / archived)
+
+totalCost (calculated)
+
+createdAt
+
+Recette Items
+
+rawMaterialId
+
+quantity
+
+unit
+
+lossPercentage (optional)
+
+2️⃣ Production (Fabrication Orders)
+
+Create a Production Order workflow:
+
+Planned → In Progress → Completed → Cancelled
+
+Automatically checks raw material availability
+
+Deducts raw materials from stock
+
+Adds finished products to stock
+
+Tracks production cost and waste
+
+Key fields
+
+id
+
+tenantId
+
+productionNumber
+
+recipeId
+
+warehouseId
+
+quantityToProduce
+
+status
+
+startedAt
+
+finishedAt
+
+createdBy
+
+Stock impact
+
+Raw materials → OUT
+
+Finished product → IN
+
+3️⃣ Paramètres (Manufacturing Settings)
+
+Global & tenant-level configuration:
+
+Default production warehouse
+
+Allow negative raw material stock (yes/no)
+
+Default loss percentage
+
+Production approval required (yes/no)
+
+Auto-calculate production cost
+
+Multi-language labels (FR / AR / Darija)
+
+4️⃣ Rapport de Fabrication (Manufacturing Reports)
+
+Generate reports such as:
+
+Production by date / product / warehouse
+
+Raw material consumption
+
+Production cost vs expected cost
+
+Waste & loss reports
+
+Efficiency rate (%)
+
+Reports should support:
+
+Filters (date, product, warehouse)
+
+Export (PDF / Excel)
+
+Charts (Recharts)
+
+🔐 Permissions & Roles
+
+Integrate with RBAC:
+
+View recipes
+
+Create/edit recipes
+
+Create production orders
+
+Validate production
+
+View reports
+
+Permissions stored as JSONB and tenant-aware.
+
+🗄️ Database Requirements
+
+PostgreSQL with Drizzle ORM
+
+All tables include tenantId
+
+Strong foreign keys
+
+Zod validation generated from schemas
+
+Suggested tables:
+
+recipes
+
+recipe_items
+
+production_orders
+
+production_materials
+
+production_logs
+
+🖥️ UI / UX Expectations
+
+Touch-friendly (tablet-first)
+
+Fluent Design style
+
+Clear status badges
+
+Step-by-step production flow
+
+RTL support for Arabic / Darija
+
+📊 Future Enhancements (Optional)
+
+Production forecasting (AI)
+
+Cost optimization suggestions
+
+Batch & lot tracking
+
+Expiration dates
+
+Machine & labor cost tracking
