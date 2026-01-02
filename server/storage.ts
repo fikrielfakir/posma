@@ -319,35 +319,18 @@ export interface IStorage {
   createStockAdjustment(adjustment: InsertStockAdjustment): Promise<StockAdjustment>;
   updateStockAdjustment(id: string, adjustment: Partial<InsertStockAdjustment>): Promise<StockAdjustment | undefined>;
 
-  // Production Machines
-  getProductionMachines(tenantId?: string): Promise<ProductionMachine[]>;
-  getProductionMachine(id: string): Promise<ProductionMachine | undefined>;
-  createProductionMachine(machine: InsertProductionMachine): Promise<ProductionMachine>;
-  updateProductionMachine(id: string, machine: Partial<InsertProductionMachine>): Promise<ProductionMachine | undefined>;
-  deleteProductionMachine(id: string): Promise<boolean>;
+  // Recipes
+  getRecipes(tenantId?: string): Promise<Recipe[]>;
+  getRecipe(id: string): Promise<Recipe | undefined>;
+  getRecipeByProduct(productId: string): Promise<Recipe | undefined>;
+  createRecipe(recipe: InsertRecipe): Promise<Recipe>;
+  updateRecipe(id: string, recipe: Partial<InsertRecipe>): Promise<Recipe | undefined>;
 
-  // Machine Maintenance
-  getMachineMaintenance(machineId?: string): Promise<MachineMaintenance[]>;
-  getMaintenanceRecord(id: string): Promise<MachineMaintenance | undefined>;
-  createMaintenanceRecord(record: InsertMachineMaintenance): Promise<MachineMaintenance>;
-  updateMaintenanceRecord(id: string, record: Partial<InsertMachineMaintenance>): Promise<MachineMaintenance | undefined>;
-
-  // Bills of Material
-  getBillsOfMaterial(tenantId?: string, productId?: string): Promise<BillOfMaterial[]>;
-  getBillOfMaterial(id: string): Promise<BillOfMaterial | undefined>;
-  createBillOfMaterial(bill: InsertBillOfMaterial): Promise<BillOfMaterial>;
-  updateBillOfMaterial(id: string, bill: Partial<InsertBillOfMaterial>): Promise<BillOfMaterial | undefined>;
-
-  // Bill Materials
-  getBillMaterials(billId: string): Promise<BillMaterial[]>;
-  createBillMaterial(material: InsertBillMaterial): Promise<BillMaterial>;
-  updateBillMaterial(id: string, material: Partial<InsertBillMaterial>): Promise<BillMaterial | undefined>;
-
-  // Production Plans
-  getProductionPlans(tenantId?: string, status?: string): Promise<ProductionPlan[]>;
-  getProductionPlan(id: string): Promise<ProductionPlan | undefined>;
-  createProductionPlan(plan: InsertProductionPlan): Promise<ProductionPlan>;
-  updateProductionPlan(id: string, plan: Partial<InsertProductionPlan>): Promise<ProductionPlan | undefined>;
+  // Recipe Items
+  getRecipeItems(recipeId: string): Promise<RecipeItem[]>;
+  createRecipeItem(item: InsertRecipeItem): Promise<RecipeItem>;
+  updateRecipeItem(id: string, item: Partial<InsertRecipeItem>): Promise<RecipeItem | undefined>;
+  deleteRecipeItem(id: string): Promise<boolean>;
 
   // Production Orders
   getProductionOrders(tenantId?: string, status?: string): Promise<ProductionOrder[]>;
@@ -355,33 +338,17 @@ export interface IStorage {
   createProductionOrder(order: InsertProductionOrder): Promise<ProductionOrder>;
   updateProductionOrder(id: string, order: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined>;
 
-  // Production Batches
-  getProductionBatches(tenantId?: string, orderId?: string): Promise<ProductionBatch[]>;
-  getProductionBatch(id: string): Promise<ProductionBatch | undefined>;
-  createProductionBatch(batch: InsertProductionBatch): Promise<ProductionBatch>;
-  updateProductionBatch(id: string, batch: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined>;
+  // Production Materials
+  getProductionMaterials(orderId: string): Promise<ProductionMaterial[]>;
+  createProductionMaterial(material: InsertProductionMaterial): Promise<ProductionMaterial>;
 
-  // Batch Materials
-  getBatchMaterials(batchId: string): Promise<BatchMaterial[]>;
-  createBatchMaterial(material: InsertBatchMaterial): Promise<BatchMaterial>;
-  updateBatchMaterial(id: string, material: Partial<InsertBatchMaterial>): Promise<BatchMaterial | undefined>;
+  // Production Logs
+  getProductionLogs(orderId: string): Promise<ProductionLog[]>;
+  createProductionLog(log: InsertProductionLog): Promise<ProductionLog>;
 
-  // Batch Outputs
-  getBatchOutputs(batchId: string): Promise<BatchOutput[]>;
-  createBatchOutput(output: InsertBatchOutput): Promise<BatchOutput>;
-  updateBatchOutput(id: string, output: Partial<InsertBatchOutput>): Promise<BatchOutput | undefined>;
-
-  // Quality Controls
-  getQualityControls(tenantId?: string, batchId?: string): Promise<QualityControl[]>;
-  getQualityControl(id: string): Promise<QualityControl | undefined>;
-  createQualityControl(control: InsertQualityControl): Promise<QualityControl>;
-  updateQualityControl(id: string, control: Partial<InsertQualityControl>): Promise<QualityControl | undefined>;
-
-  // Quality Parameters
-  getQualityParameters(tenantId?: string): Promise<QualityParameter[]>;
-  getQualityParameter(id: string): Promise<QualityParameter | undefined>;
-  createQualityParameter(param: InsertQualityParameter): Promise<QualityParameter>;
-  updateQualityParameter(id: string, param: Partial<InsertQualityParameter>): Promise<QualityParameter | undefined>;
+  // Manufacturing Settings
+  getManufacturingSettings(tenantId: string): Promise<ManufacturingSettings | undefined>;
+  upsertManufacturingSettings(settings: InsertManufacturingSettings): Promise<ManufacturingSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
